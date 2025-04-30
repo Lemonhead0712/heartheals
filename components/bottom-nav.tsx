@@ -4,10 +4,11 @@ import type React from "react"
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, BookHeart, Wind, BarChart3, CreditCard } from "lucide-react"
+import { Home, BookHeart, Wind, BarChart3, CreditCard, Activity } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useHapticContext } from "@/contexts/haptic-context"
 import { Logo } from "./logo"
+import StatusIconTooltip from "./status-icon-tooltip"
 
 export function BottomNav() {
   const pathname = usePathname()
@@ -47,6 +48,11 @@ export function BottomNav() {
       icon: BarChart3,
     },
     {
+      name: "Status",
+      href: "/app-status",
+      icon: Activity,
+    },
+    {
       name: "Subscribe",
       href: "/subscription",
       icon: CreditCard,
@@ -65,8 +71,8 @@ export function BottomNav() {
       </div>
 
       {/* Bottom Navigation - Only visible on mobile */}
-      <div className="fixed bottom-0 left-0 z-50 w-full h-16 bg-background border-t md:hidden">
-        <div className="grid h-full grid-cols-5">
+      <div className="fixed bottom-0 left-0 z-50 w-full h-16 bg-background border-t md:hidden overflow-x-auto scrollbar-hide">
+        <div className="grid h-full grid-cols-6">
           {navItems.map((item) => {
             const isActive = pathname === item.href
 
@@ -79,15 +85,25 @@ export function BottomNav() {
                   "flex flex-col items-center justify-center gap-1 text-xs font-medium transition-colors",
                   isActive ? "text-primary" : "text-muted-foreground hover:text-primary",
                   "active:bg-gray-100 touch-manipulation", // Add active state and touch optimization
+                  item.name === "Status" && !isActive && "text-purple-500/70", // Special styling for status icon
                 )}
               >
-                <item.icon
-                  className={cn(
-                    "h-5 w-5 transition-transform",
-                    isActive ? "text-primary" : "text-muted-foreground",
-                    isActive && "scale-110", // Slightly enlarge active icon
-                  )}
-                />
+                {item.name === "Status" ? (
+                  <StatusIconTooltip
+                    size="sm"
+                    isActive={isActive}
+                    tooltipText="App Status"
+                    className={isActive ? "text-primary" : undefined}
+                  />
+                ) : (
+                  <item.icon
+                    className={cn(
+                      "h-5 w-5 transition-transform",
+                      isActive ? "text-primary" : "text-muted-foreground",
+                      isActive && "scale-110", // Slightly enlarge active icon
+                    )}
+                  />
+                )}
                 <span>{item.name}</span>
               </Link>
             )
