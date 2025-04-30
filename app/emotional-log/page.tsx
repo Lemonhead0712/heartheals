@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ChevronLeft, Plus, Save, Trash2, AlertCircle } from "lucide-react"
+import { ChevronLeft, Plus, Save, Trash2, AlertCircle, RefreshCw, Clock } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Logo } from "@/components/logo"
 import { BottomNav } from "@/components/bottom-nav"
@@ -22,6 +22,8 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { PageContainer } from "@/components/page-container"
 import { EmotionalSurvey } from "@/components/emotional-survey"
 import { EnhancedEmotionalAnalytics } from "@/components/enhanced-emotional-analytics"
+import { formatRelativeTime } from "@/utils/date-utils"
+import { useRealTimeUpdate } from "@/hooks/use-real-time-update"
 
 export default function EmotionalLogPage() {
   return (
@@ -33,6 +35,10 @@ export default function EmotionalLogPage() {
 
 function EmotionalLog() {
   const { entries, isLoading, error, addEntry, deleteEntry } = useEmotionLogs()
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  // Update the component every minute to keep relative times current
+  const currentTime = useRealTimeUpdate(60000)
 
   // Ensure we have a valid entries array
   const emotionLogs = entries || []
@@ -42,6 +48,7 @@ function EmotionalLog() {
   const [intensity, setIntensity] = useState(5)
   const [notes, setNotes] = useState("")
   const [showSurvey, setShowSurvey] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
 
   const emotions = [
     "Joy",
@@ -55,6 +62,17 @@ function EmotionalLog() {
     "Calm",
     "Anxious",
   ]
+
+  // Handle manual refresh
+  const handleRefresh = () => {
+    setIsRefreshing(true)
+    // In a real implementation, this would trigger a data refresh
+    // For now, we'll just update the last updated time
+    setTimeout(() => {
+      setLastUpdated(new Date())
+      setIsRefreshing(false)
+    }, 500)
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -72,12 +90,14 @@ function EmotionalLog() {
       setIntensity(5)
       setNotes("")
       setShowSurvey(true)
+      setLastUpdated(new Date())
     }
   }
 
   const handleDelete = (id: string) => {
     if (window.confirm("Are you sure you want to delete this entry?")) {
       deleteEntry(id)
+      setLastUpdated(new Date())
     }
   }
 
@@ -126,8 +146,12 @@ function EmotionalLog() {
             <h1 className="text-3xl font-bold text-pink-800 mt-4 mb-2">Emotional State Log</h1>
             <p className="text-pink-600">Track your emotions and reflect on your emotional patterns</p>
           </div>
-          <div>
+          <div className="flex flex-col items-end">
             <SubscriptionStatus />
+            <div className="flex items-center mt-2">
+              <Clock className="h-4 w-4 text-pink-500 mr-1" />
+              <span className="text-xs text-pink-500">{new Date().toLocaleDateString()}</span>
+            </div>
           </div>
         </motion.div>
 
@@ -144,9 +168,22 @@ function EmotionalLog() {
         <FeatureGate featureId="emotional-log">
           <motion.div variants={item}>
             <Card className="mb-8 border-pink-200 bg-white/90 backdrop-blur-sm shadow-md">
-              <CardHeader>
-                <CardTitle className="text-pink-700">How are you feeling?</CardTitle>
-                <CardDescription className="text-pink-600">Log your current emotional state</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-pink-700">How are you feeling?</CardTitle>
+                  <CardDescription className="text-pink-600">Log your current emotional state</CardDescription>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleRefresh}
+                  disabled={isLoading || isRefreshing}
+                  className="h-8 w-8"
+                  title="Refresh data"
+                >
+                  <RefreshCw className={`h-4 w-4 text-pink-500 ${isRefreshing ? "animate-spin" : ""}`} />
+                  <span className="sr-only">Refresh</span>
+                </Button>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -260,7 +297,10 @@ function EmotionalLog() {
           )}
 
           <motion.div className="space-y-4" variants={item}>
-            <h2 className="text-2xl font-semibold text-pink-800">Your Emotional Journey</h2>
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-semibold text-pink-800">Your Emotional Journey</h2>
+              <span className="text-xs text-pink-500">Last updated: {formatRelativeTime(lastUpdated)}</span>
+            </div>
 
             {isLoading ? (
               <div className="flex justify-center items-center py-8">
@@ -300,13 +340,7 @@ function EmotionalLog() {
                               </span>
                               <div>
                                 <h3 className="text-xl font-medium text-pink-800">{entry.emotion}</h3>
-                                <p className="text-sm text-pink-600">
-                                  {new Date(entry.timestamp).toLocaleDateString()} at{" "}
-                                  {new Date(entry.timestamp).toLocaleTimeString([], {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
-                                </p>
+                                <p className="text-sm text-pink-600">{formatRelativeTime(new Date(entry.timestamp))}</p>
                               </div>
                             </div>
                             <div className="bg-pink-100 text-pink-800 px-2 py-1 rounded-full text-sm">

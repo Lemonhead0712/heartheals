@@ -5,8 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { ArrowRight, TrendingUp } from "lucide-react"
+import { ArrowRight, TrendingUp, RefreshCw } from "lucide-react"
 import Link from "next/link"
+import { formatRelativeTime } from "@/utils/date-utils"
+import { useRealTimeUpdate } from "@/hooks/use-real-time-update"
 
 type QuizResult = {
   type: string
@@ -20,9 +22,12 @@ type QuizResult = {
 export function SnapshotsSection() {
   const [quizResults, setQuizResults] = useState<QuizResult[]>([])
   const [chartData, setChartData] = useState<any[]>([])
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
-  useEffect(() => {
-    // Load quiz results from localStorage
+  // Update the component every minute to keep relative times current
+  const currentTime = useRealTimeUpdate(60000)
+
+  const loadQuizData = () => {
     try {
       const savedQuizzes = JSON.parse(localStorage.getItem("heartsHeal_quizResults") || "[]")
 
@@ -44,6 +49,7 @@ export function SnapshotsSection() {
           "self-kindness": quiz.categoryScores?.["self-kindness"] || 0,
           "common-humanity": quiz.categoryScores?.["common-humanity"] || 0,
           mindfulness: quiz.categoryScores?.["mindfulness"] || 0,
+          timestamp: new Date(quiz.date).getTime(), // Add raw timestamp for sorting
         }))
 
       setChartData(chartData)
@@ -52,31 +58,49 @@ export function SnapshotsSection() {
       setQuizResults([])
       setChartData([])
     }
+  }
+
+  useEffect(() => {
+    loadQuizData()
+
+    // Set up event listener for localStorage changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "heartsHeal_quizResults") {
+        loadQuizData()
+      }
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+    return () => window.removeEventListener("storage", handleStorageChange)
   }, [])
 
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffTime = Math.abs(now.getTime() - date.getTime())
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-
-    if (diffDays === 0) {
-      return `Today at ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-    } else if (diffDays === 1) {
-      return `Yesterday at ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-    } else {
-      return date.toLocaleDateString([], { month: "short", day: "numeric" })
-    }
+  // Manual refresh function
+  const handleRefresh = () => {
+    setIsRefreshing(true)
+    loadQuizData()
+    setTimeout(() => setIsRefreshing(false), 500) // Show refresh animation for at least 500ms
   }
 
   // If no quiz results, show a prompt to take a quiz
   if (quizResults.length === 0) {
     return (
       <Card className="h-full border-purple-200 bg-white/80 backdrop-blur-sm shadow-md">
-        <CardHeader>
-          <CardTitle className="text-purple-800">Self-Compassion Snapshots</CardTitle>
-          <CardDescription className="text-purple-600">Track your self-compassion journey over time</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-purple-800">Self-Compassion Snapshots</CardTitle>
+            <CardDescription className="text-purple-600">Track your self-compassion journey over time</CardDescription>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="h-8 w-8"
+            title="Refresh data"
+          >
+            <RefreshCw className={`h-4 w-4 text-purple-500 ${isRefreshing ? "animate-spin" : ""}`} />
+            <span className="sr-only">Refresh</span>
+          </Button>
         </CardHeader>
         <CardContent className="flex flex-col items-center text-center p-6">
           <div className="bg-purple-50 rounded-full p-4 mb-4">
@@ -121,9 +145,22 @@ export function SnapshotsSection() {
 
   return (
     <Card className="h-full border-purple-200 bg-white/80 backdrop-blur-sm shadow-md">
-      <CardHeader>
-        <CardTitle className="text-purple-800">Self-Compassion Snapshots</CardTitle>
-        <CardDescription className="text-purple-600">Track your self-compassion journey over time</CardDescription>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-purple-800">Self-Compassion Snapshots</CardTitle>
+          <CardDescription className="text-purple-600">Track your self-compassion journey over time</CardDescription>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="h-8 w-8"
+          title="Refresh data"
+        >
+          <RefreshCw className={`h-4 w-4 text-purple-500 ${isRefreshing ? "animate-spin" : ""}`} />
+          <span className="sr-only">Refresh</span>
+        </Button>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Chart showing progress over time */}
@@ -192,12 +229,15 @@ export function SnapshotsSection() {
 
         {/* Recent quiz results */}
         <div className="space-y-3">
-          <h3 className="text-sm font-medium text-purple-700">Recent Assessments</h3>
+          <div className="flex justify-between items-center">
+            <h3 className="text-sm font-medium text-purple-700">Recent Assessments</h3>
+            <span className="text-xs text-purple-500">Last updated: {formatRelativeTime(new Date())}</span>
+          </div>
           {quizResults.map((result, index) => (
             <div key={index} className="bg-purple-50 p-3 rounded-md flex justify-between items-center">
               <div>
                 <div className="text-sm font-medium text-purple-800">Self-Compassion Check</div>
-                <div className="text-xs text-purple-600">{formatDate(result.date)}</div>
+                <div className="text-xs text-purple-600">{formatRelativeTime(new Date(result.date))}</div>
               </div>
               <div className="text-right">
                 <div className="text-lg font-semibold text-purple-800">{result.score}%</div>

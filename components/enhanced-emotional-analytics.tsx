@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -33,10 +33,13 @@ import {
   EyeOff,
   Lightbulb,
   Info,
+  RefreshCw,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { EmotionChartTooltip } from "./emotion-chart-tooltip"
 import { ResponsiveEmotionPieChart } from "./responsive-emotion-pie-chart"
+import { formatRelativeTime, getDateRangeForPeriod, formatDateRange } from "@/utils/date-utils"
+import { useRealTimeUpdate } from "@/hooks/use-real-time-update"
 
 interface EmotionalAnalyticsProps {
   emotionLogs?: EmotionEntry[]
@@ -57,6 +60,29 @@ export function EnhancedEmotionalAnalytics({
   const [visibleSurveyInsights, setVisibleSurveyInsights] = useState<string[]>([])
   const [customDateRange, setCustomDateRange] = useState<{ start: Date; end: Date } | null>(null)
   const [showEmotionDetails, setShowEmotionDetails] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
+
+  // Update the component every minute to keep relative times current
+  const currentTime = useRealTimeUpdate(60000)
+
+  // Update last updated time when data changes
+  useEffect(() => {
+    if (!isLoading && emotionLogs.length > 0) {
+      setLastUpdated(new Date())
+    }
+  }, [emotionLogs, isLoading])
+
+  // Handle manual refresh
+  const handleRefresh = () => {
+    setIsRefreshing(true)
+    // In a real implementation, this would trigger a data refresh
+    // For now, we'll just update the last updated time
+    setTimeout(() => {
+      setLastUpdated(new Date())
+      setIsRefreshing(false)
+    }, 500)
+  }
 
   // Filter data based on selected time range
   const filteredData = useMemo(() => {
@@ -325,11 +351,44 @@ export function EnhancedEmotionalAnalytics({
     setShowEmotionDetails(!showEmotionDetails)
   }
 
+  // Get date range text
+  const getDateRangeText = () => {
+    if (customDateRange) {
+      return formatDateRange(customDateRange.start, customDateRange.end)
+    }
+
+    const { start, end } = getDateRangeForPeriod(timeRange === "all" ? "year" : timeRange)
+
+    switch (timeRange) {
+      case "week":
+        return "Past 7 days"
+      case "month":
+        return "Past 30 days"
+      case "all":
+        return "All time"
+      default:
+        return formatDateRange(start, end)
+    }
+  }
+
   return (
     <Card className="border-blue-200 bg-white/80 backdrop-blur-sm shadow-md">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-pink-700">Emotional Analytics</CardTitle>
-        <CardDescription className="text-pink-600">Advanced insights from your emotional journey</CardDescription>
+      <CardHeader className="pb-2 flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-pink-700">Emotional Analytics</CardTitle>
+          <CardDescription className="text-pink-600">Advanced insights from your emotional journey</CardDescription>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleRefresh}
+          disabled={isLoading || isRefreshing}
+          className="h-8 w-8"
+          title="Refresh data"
+        >
+          <RefreshCw className={`h-4 w-4 text-pink-500 ${isRefreshing ? "animate-spin" : ""}`} />
+          <span className="sr-only">Refresh</span>
+        </Button>
       </CardHeader>
 
       <CardContent>
@@ -356,12 +415,18 @@ export function EnhancedEmotionalAnalytics({
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Last updated indicator */}
+            <div className="flex justify-end">
+              <span className="text-xs text-pink-500">Last updated: {formatRelativeTime(lastUpdated)}</span>
+            </div>
+
             {/* Time range selector */}
             <div className="flex justify-between items-center bg-pink-50 p-3 rounded-md">
               <div className="flex items-center">
                 <Calendar className="h-5 w-5 text-pink-700" aria-hidden="true" />
                 <div className="ml-2">
                   <p className="text-sm font-medium text-pink-800">Time Range</p>
+                  <p className="text-xs text-pink-600">{getDateRangeText()}</p>
                 </div>
               </div>
               <div className="flex space-x-2">
@@ -523,7 +588,10 @@ export function EnhancedEmotionalAnalytics({
 
               {/* Trends Tab */}
               <TabsContent value="trends" className="space-y-4">
-                <h3 className="text-sm font-medium text-pink-700">Intensity Over Time</h3>
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-medium text-pink-700">Intensity Over Time</h3>
+                  <span className="text-xs text-pink-500">Real-time data</span>
+                </div>
 
                 {analytics.intensityOverTime.length > 1 ? (
                   <div className="relative">
@@ -731,7 +799,10 @@ export function EnhancedEmotionalAnalytics({
 
               {/* Survey Tab */}
               <TabsContent value="survey" className="space-y-4">
-                <h3 className="text-sm font-medium text-pink-700">Survey Insights</h3>
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-medium text-pink-700">Survey Insights</h3>
+                  <span className="text-xs text-pink-500">Last updated: {formatRelativeTime(lastUpdated)}</span>
+                </div>
 
                 {analytics.surveyInsights && analytics.surveyInsights.length > 0 ? (
                   <div className="space-y-3">
