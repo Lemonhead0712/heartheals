@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ChevronLeft, Save, AlertCircle, Loader2 } from "lucide-react"
+import { ChevronLeft, Save, AlertCircle, Loader2, RefreshCw } from "lucide-react"
 import { motion } from "framer-motion"
 import { Logo } from "@/components/logo"
 import { EmotionalAwarenessMeter } from "@/components/emotional-awareness-meter"
@@ -50,7 +50,11 @@ export default function ThoughtsPage() {
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("journal")
 
-  const { shownQuestionIds, saveQuizSession } = useQuizRotation("self-compassion")
+  // Use the quiz rotation hook for both quiz types
+  const { shownQuestionIds: scShownQuestionIds, saveQuizSession: scSaveQuizSession } =
+    useQuizRotation("self-compassion")
+  const { shownQuestionIds: eaShownQuestionIds, saveQuizSession: eaSaveQuizSession } =
+    useQuizRotation("emotional-awareness")
 
   const journalPrompts: JournalPrompt[] = [
     {
@@ -94,19 +98,23 @@ export default function ThoughtsPage() {
     }
   }, [])
 
-  // Store self-compassion questions for progress tracking
+  // Store questions for progress tracking
   useEffect(() => {
     try {
       const selfCompassionQuestions = questionPools["self-compassion"]
       localStorage.setItem("heartsHeal_selfCompassionQuestions", JSON.stringify(selfCompassionQuestions))
+
+      const emotionalAwarenessQuestions = questionPools["emotional-awareness"]
+      localStorage.setItem("heartsHeal_emotionalAwarenessQuestions", JSON.stringify(emotionalAwarenessQuestions))
     } catch (error) {
-      console.error("Error storing self-compassion questions:", error)
+      console.error("Error storing quiz questions:", error)
     }
   }, [])
 
   // Expanded pool of 20 questions for each quiz type
   const questionPools = {
     "emotional-awareness": [
+      // Recognition category (7 questions)
       {
         id: "ea1",
         question: "When you feel upset, how quickly do you typically recognize the specific emotion?",
@@ -117,31 +125,10 @@ export default function ThoughtsPage() {
           "I struggle to identify specific emotions beyond 'good' or 'bad'",
         ],
         scores: [100, 75, 50, 25],
+        category: "recognition",
       },
       {
         id: "ea2",
-        question: "How comfortable are you expressing your emotions to others?",
-        options: [
-          "Very comfortable - I share openly with most people",
-          "Somewhat comfortable - I share with close friends/family",
-          "Somewhat uncomfortable - I rarely express my true feelings",
-          "Very uncomfortable - I prefer to keep emotions private",
-        ],
-        scores: [100, 75, 50, 25],
-      },
-      {
-        id: "ea3",
-        question: "When faced with a difficult emotion, what's your typical response?",
-        options: [
-          "I sit with it and explore what it's trying to tell me",
-          "I acknowledge it but try to move on quickly",
-          "I distract myself until it passes",
-          "I try to suppress or ignore it",
-        ],
-        scores: [100, 75, 50, 25],
-      },
-      {
-        id: "ea4",
         question: "How well can you distinguish between similar emotions (e.g., disappointment vs. sadness)?",
         options: [
           "Very well - I can identify subtle differences between emotions",
@@ -150,9 +137,46 @@ export default function ThoughtsPage() {
           "Not well - Many emotions feel the same to me",
         ],
         scores: [100, 75, 50, 25],
+        category: "recognition",
+      },
+      {
+        id: "ea3",
+        question: "When you experience complex emotions, how easily can you identify all the feelings involved?",
+        options: [
+          "Very easily - I can identify multiple emotions occurring simultaneously",
+          "Somewhat easily - I can usually identify the main emotions involved",
+          "With difficulty - I tend to focus on just the dominant emotion",
+          "Very difficult - I usually just feel generally good or bad",
+        ],
+        scores: [100, 75, 50, 25],
+        category: "recognition",
+      },
+      {
+        id: "ea4",
+        question: "How accurately can you predict how you'll feel in different situations?",
+        options: [
+          "Very accurately - I know myself well enough to predict my emotional responses",
+          "Somewhat accurately - I can usually predict my stronger emotional reactions",
+          "Not very accurately - My emotions often surprise me",
+          "Poorly - I'm frequently caught off guard by my emotional responses",
+        ],
+        scores: [100, 75, 50, 25],
+        category: "recognition",
       },
       {
         id: "ea5",
+        question: "How well do you recognize the early signs of an emotional reaction?",
+        options: [
+          "Very well - I notice subtle changes in my emotional state immediately",
+          "Fairly well - I usually notice emotions as they're developing",
+          "Somewhat - I often only notice emotions once they're strong",
+          "Not well - I'm usually only aware of emotions after they're intense",
+        ],
+        scores: [100, 75, 50, 25],
+        category: "recognition",
+      },
+      {
+        id: "ea6",
         question: "How aware are you of how your emotions affect your body?",
         options: [
           "Very aware - I notice physical sensations tied to specific emotions",
@@ -161,8 +185,180 @@ export default function ThoughtsPage() {
           "Rarely aware - I don't typically connect physical sensations to emotions",
         ],
         scores: [100, 75, 50, 25],
+        category: "recognition",
       },
-      // More emotional awareness questions...
+      {
+        id: "ea7",
+        question: "How well can you identify the triggers that cause specific emotions for you?",
+        options: [
+          "Very well - I clearly understand what triggers different emotions",
+          "Fairly well - I can identify most of my emotional triggers",
+          "Somewhat - I recognize some obvious triggers but miss subtler ones",
+          "Not well - I'm often confused about why I feel certain emotions",
+        ],
+        scores: [100, 75, 50, 25],
+        category: "recognition",
+      },
+
+      // Expression category (7 questions)
+      {
+        id: "ea8",
+        question: "How comfortable are you expressing your emotions to others?",
+        options: [
+          "Very comfortable - I share openly with most people",
+          "Somewhat comfortable - I share with close friends/family",
+          "Somewhat uncomfortable - I rarely express my true feelings",
+          "Very uncomfortable - I prefer to keep emotions private",
+        ],
+        scores: [100, 75, 50, 25],
+        category: "expression",
+      },
+      {
+        id: "ea9",
+        question: "How accurately can you communicate your emotions to others?",
+        options: [
+          "Very accurately - I can precisely describe what I'm feeling",
+          "Fairly accurately - I can usually convey the general emotion",
+          "Somewhat accurately - I sometimes struggle to find the right words",
+          "Not accurately - I find it very difficult to explain my feelings",
+        ],
+        scores: [100, 75, 50, 25],
+        category: "expression",
+      },
+      {
+        id: "ea10",
+        question: "How comfortable are you expressing vulnerable emotions like sadness or fear?",
+        options: [
+          "Very comfortable - I can express vulnerability when appropriate",
+          "Somewhat comfortable - I can express vulnerability with trusted people",
+          "Somewhat uncomfortable - I try to hide vulnerable emotions",
+          "Very uncomfortable - I avoid showing vulnerability at all costs",
+        ],
+        scores: [100, 75, 50, 25],
+        category: "expression",
+      },
+      {
+        id: "ea11",
+        question: "How well can you express emotions in a constructive way during conflicts?",
+        options: [
+          "Very well - I express feelings clearly without blaming others",
+          "Fairly well - I usually express emotions appropriately in conflicts",
+          "With difficulty - I often become too emotional or shut down",
+          "Poorly - I typically avoid conflicts or become hostile",
+        ],
+        scores: [100, 75, 50, 25],
+        category: "expression",
+      },
+      {
+        id: "ea12",
+        question: "How comfortable are you expressing positive emotions like joy or excitement?",
+        options: [
+          "Very comfortable - I freely express positive emotions",
+          "Somewhat comfortable - I express positive emotions in most situations",
+          "Somewhat uncomfortable - I often downplay positive emotions",
+          "Very uncomfortable - I rarely express enthusiasm or joy openly",
+        ],
+        scores: [100, 75, 50, 25],
+        category: "expression",
+      },
+      {
+        id: "ea13",
+        question: "How authentic is your emotional expression?",
+        options: [
+          "Very authentic - I express what I truly feel",
+          "Mostly authentic - I generally express my real emotions",
+          "Somewhat inauthentic - I often hide or alter my true feelings",
+          "Very inauthentic - I rarely show my genuine emotions",
+        ],
+        scores: [100, 75, 50, 25],
+        category: "expression",
+      },
+      {
+        id: "ea14",
+        question: "How well can you adjust your emotional expression to different social contexts?",
+        options: [
+          "Very well - I can express emotions appropriately in any context",
+          "Fairly well - I usually adjust my expression to fit the situation",
+          "With some difficulty - I sometimes express emotions inappropriately",
+          "Poorly - I express emotions the same way regardless of context",
+        ],
+        scores: [100, 75, 50, 25],
+        category: "expression",
+      },
+
+      // Regulation category (6 questions)
+      {
+        id: "ea15",
+        question: "When faced with a difficult emotion, what's your typical response?",
+        options: [
+          "I sit with it and explore what it's trying to tell me",
+          "I acknowledge it but try to move on quickly",
+          "I distract myself until it passes",
+          "I try to suppress or ignore it",
+        ],
+        scores: [100, 75, 50, 25],
+        category: "regulation",
+      },
+      {
+        id: "ea16",
+        question: "How well can you calm yourself when feeling intense emotions?",
+        options: [
+          "Very well - I have effective strategies to self-soothe",
+          "Fairly well - I can usually calm myself down eventually",
+          "With difficulty - It takes me a long time to calm down",
+          "Poorly - I feel overwhelmed by intense emotions",
+        ],
+        scores: [100, 75, 50, 25],
+        category: "regulation",
+      },
+      {
+        id: "ea17",
+        question: "How well can you maintain emotional balance during stressful situations?",
+        options: [
+          "Very well - I stay emotionally balanced even under high stress",
+          "Fairly well - I can usually maintain composure under stress",
+          "With difficulty - I often become emotionally reactive when stressed",
+          "Poorly - I typically lose emotional control under stress",
+        ],
+        scores: [100, 75, 50, 25],
+        category: "regulation",
+      },
+      {
+        id: "ea18",
+        question: "How effectively can you shift from a negative to a positive emotional state?",
+        options: [
+          "Very effectively - I can intentionally shift my emotional state",
+          "Somewhat effectively - I can usually improve my mood with effort",
+          "With difficulty - It takes me a long time to shift emotional states",
+          "Ineffectively - I tend to stay stuck in negative emotions",
+        ],
+        scores: [100, 75, 50, 25],
+        category: "regulation",
+      },
+      {
+        id: "ea19",
+        question: "How well can you tolerate uncomfortable emotions without acting impulsively?",
+        options: [
+          "Very well - I can sit with discomfort without reacting",
+          "Fairly well - I usually avoid impulsive reactions",
+          "With difficulty - I often act impulsively to escape discomfort",
+          "Poorly - I immediately try to escape uncomfortable feelings",
+        ],
+        scores: [100, 75, 50, 25],
+        category: "regulation",
+      },
+      {
+        id: "ea20",
+        question: "How effectively do you use healthy coping strategies when emotionally distressed?",
+        options: [
+          "Very effectively - I consistently use healthy coping strategies",
+          "Somewhat effectively - I usually turn to healthy coping methods",
+          "Not very effectively - I sometimes use unhealthy coping mechanisms",
+          "Ineffectively - I rely primarily on unhealthy coping methods",
+        ],
+        scores: [100, 75, 50, 25],
+        category: "regulation",
+      },
     ],
     "self-compassion": [
       // Self-Kindness vs. Self-Judgment (7 questions)
@@ -413,13 +609,6 @@ export default function ThoughtsPage() {
     ],
   }
 
-  // Function to randomly select questions from the pool
-  const getRandomQuestions = (quizName: "emotional-awareness" | "self-compassion", count: number) => {
-    const pool = questionPools[quizName]
-    const shuffled = [...pool].sort(() => 0.5 - Math.random())
-    return shuffled.slice(0, Math.min(count, shuffled.length))
-  }
-
   const handleJournalSubmit = () => {
     if (journalEntry.trim() && selectedPrompt) {
       const newEntry = {
@@ -444,8 +633,6 @@ export default function ThoughtsPage() {
     }
   }
 
-  // Get recently shown question IDs
-
   const startQuiz = (quizName: "emotional-awareness" | "self-compassion") => {
     setIsLoading(true)
     setError(null)
@@ -463,19 +650,36 @@ export default function ThoughtsPage() {
         // Select questions from each category, prioritizing those not recently shown
         // We want exactly 5 questions total with balanced category representation
         const selectedQuestions = [
-          ...selectQuestionsWithRotation(categorizedQuestions["self-kindness"] || [], 2, shownQuestionIds),
-          ...selectQuestionsWithRotation(categorizedQuestions["common-humanity"] || [], 2, shownQuestionIds),
-          ...selectQuestionsWithRotation(categorizedQuestions["mindfulness"] || [], 1, shownQuestionIds),
+          ...selectQuestionsWithRotation(categorizedQuestions["self-kindness"] || [], 2, scShownQuestionIds),
+          ...selectQuestionsWithRotation(categorizedQuestions["common-humanity"] || [], 2, scShownQuestionIds),
+          ...selectQuestionsWithRotation(categorizedQuestions["mindfulness"] || [], 1, scShownQuestionIds),
         ]
 
         // Save the selected question IDs for future rotation
-        saveQuizSession(selectedQuestions.map((q) => q.id))
+        scSaveQuizSession(selectedQuestions.map((q) => q.id))
 
         setCurrentQuiz(selectedQuestions)
       } else {
-        // For emotional awareness, select random questions
-        const randomQuestions = getRandomQuestions(quizName, 6)
-        setCurrentQuiz(randomQuestions)
+        // For emotional awareness, select questions from each category
+        const pool = questionPools[quizName]
+        const categorizedQuestions = {
+          recognition: pool.filter((q) => q.category === "recognition"),
+          expression: pool.filter((q) => q.category === "expression"),
+          regulation: pool.filter((q) => q.category === "regulation"),
+        }
+
+        // Select questions from each category, prioritizing those not recently shown
+        // We want exactly 5 questions total with balanced category representation
+        const selectedQuestions = [
+          ...selectQuestionsWithRotation(categorizedQuestions["recognition"] || [], 2, eaShownQuestionIds),
+          ...selectQuestionsWithRotation(categorizedQuestions["expression"] || [], 2, eaShownQuestionIds),
+          ...selectQuestionsWithRotation(categorizedQuestions["regulation"] || [], 1, eaShownQuestionIds),
+        ]
+
+        // Save the selected question IDs for future rotation
+        eaSaveQuizSession(selectedQuestions.map((q) => q.id))
+
+        setCurrentQuiz(selectedQuestions)
       }
 
       setQuizType(quizName)
@@ -573,6 +777,31 @@ export default function ThoughtsPage() {
         } else {
           setRecommendedPractice("general")
         }
+      } else if (quizType === "emotional-awareness") {
+        // Calculate category scores for emotional awareness
+        const categories = {
+          recognition: { total: 0, count: 0 },
+          expression: { total: 0, count: 0 },
+          regulation: { total: 0, count: 0 },
+        }
+
+        currentQuiz.forEach((question) => {
+          const category = question.category as keyof typeof categories
+          if (category && quizScores[question.id]) {
+            categories[category].total += quizScores[question.id]
+            categories[category].count += 1
+          }
+        })
+
+        const categoryScoresResult = Object.entries(categories).reduce(
+          (result, [category, data]) => {
+            result[category] = data.count > 0 ? Math.round(data.total / data.count) : 0
+            return result
+          },
+          {} as { [key: string]: number },
+        )
+
+        setCategoryScores(categoryScoresResult)
       }
 
       setAwarenessScore(averageScore)
@@ -583,7 +812,7 @@ export default function ThoughtsPage() {
         savedQuizzes.push({
           type: quizType,
           score: averageScore,
-          categoryScores: quizType === "self-compassion" ? categoryScores : undefined,
+          categoryScores: categoryScores,
           date: new Date().toISOString(),
         })
         localStorage.setItem("heartsHeal_quizResults", JSON.stringify(savedQuizzes))
@@ -637,15 +866,15 @@ export default function ThoughtsPage() {
         return "Common Humanity"
       case "mindfulness":
         return "Mindfulness"
+      case "recognition":
+        return "Emotion Recognition"
+      case "expression":
+        return "Emotion Expression"
+      case "regulation":
+        return "Emotion Regulation"
       default:
         return category.charAt(0).toUpperCase() + category.slice(1)
     }
-  }
-
-  // Helper function to get random questions from an array
-  const getRandomQuestionsFromArray = (questions: QuizQuestion[], count: number) => {
-    const shuffled = [...questions].sort(() => 0.5 - Math.random())
-    return shuffled.slice(0, Math.min(count, shuffled.length))
   }
 
   return (
@@ -783,7 +1012,9 @@ export default function ThoughtsPage() {
               </TabsContent>
 
               <TabsContent value="quizzes" className="space-y-6">
-                {quizType === "self-compassion" && <QuizProgressIndicator />}
+                {currentQuiz.length > 0 && (
+                  <QuizProgressIndicator quizType={quizType} currentQuizQuestions={currentQuiz.map((q) => q.id)} />
+                )}
                 {isLoading ? (
                   <div className="flex justify-center items-center py-12">
                     <EmotionalThoughtsSpinner size="md" />
@@ -801,8 +1032,12 @@ export default function ThoughtsPage() {
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-purple-600">
+                        <p className="text-purple-600 mb-2">
                           This quiz helps you understand your relationship with emotions and how you experience them.
+                        </p>
+                        <p className="text-xs text-purple-500 italic">
+                          Each quiz presents 5 random questions from our question pool, ensuring a fresh experience each
+                          time. Take multiple quizzes to get a comprehensive assessment of your emotional awareness.
                         </p>
                       </CardContent>
                       <CardFooter>
@@ -829,9 +1064,13 @@ export default function ThoughtsPage() {
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-purple-600">
+                        <p className="text-purple-600 mb-2">
                           This assessment helps you understand your self-compassion practices and offers personalized
                           guidance for growth.
+                        </p>
+                        <p className="text-xs text-purple-500 italic">
+                          Each quiz presents 5 random questions from our question pool, ensuring a fresh experience each
+                          time. Take multiple quizzes to get a comprehensive assessment of your self-compassion.
                         </p>
                       </CardContent>
                       <CardFooter>
@@ -863,32 +1102,29 @@ export default function ThoughtsPage() {
                           <EmotionalAwarenessMeter
                             score={awarenessScore}
                             quizType={quizType}
-                            categoryScores={quizType === "self-compassion" ? categoryScores : undefined}
+                            categoryScores={categoryScores}
                           />
 
                           <div className="mt-8 space-y-4">
                             <h3 className="text-lg font-medium text-purple-800">Your Responses</h3>
 
-                            {quizType === "self-compassion" && (
+                            {Object.keys(categoryScores).length > 0 && (
                               <div className="bg-purple-50 p-4 rounded-md mb-4">
                                 <h4 className="text-sm font-medium text-purple-700 mb-2">Categories Assessed</h4>
                                 <div className="flex flex-wrap gap-2">
-                                  {Object.keys(categoryScores).length > 0 ? (
-                                    Object.keys(categoryScores).map((category) => (
-                                      <span
-                                        key={category}
-                                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
-                                      >
-                                        {formatCategory(category)}
-                                      </span>
-                                    ))
-                                  ) : (
-                                    <span className="text-sm text-purple-600">No category data available</span>
-                                  )}
+                                  {Object.keys(categoryScores).map((category) => (
+                                    <span
+                                      key={category}
+                                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
+                                    >
+                                      {formatCategory(category)}
+                                    </span>
+                                  ))}
                                 </div>
                                 <p className="text-xs text-purple-600 mt-2">
-                                  Each quiz assesses different aspects of self-compassion. Take the quiz regularly to
-                                  get a comprehensive assessment over time.
+                                  Each quiz assesses different aspects of{" "}
+                                  {quizType === "emotional-awareness" ? "emotional awareness" : "self-compassion"}. Take
+                                  the quiz regularly to get a comprehensive assessment over time.
                                 </p>
                               </div>
                             )}
@@ -897,7 +1133,7 @@ export default function ThoughtsPage() {
                               <div key={question.id} className="bg-purple-50 p-4 rounded-md">
                                 <p className="font-medium text-purple-800 mb-2">{question.question}</p>
                                 <p className="text-purple-700">{quizAnswers[question.id]}</p>
-                                {quizType === "self-compassion" && question.category && (
+                                {question.category && (
                                   <p className="text-xs text-purple-500 mt-1 italic">
                                     Category: {formatCategory(question.category as string)}
                                   </p>
@@ -911,6 +1147,7 @@ export default function ThoughtsPage() {
                               className="flex-1 bg-purple-600 hover:bg-purple-700"
                               onClick={() => startQuiz(quizType)}
                             >
+                              <RefreshCw className="h-4 w-4 mr-2" />
                               Take Another Quiz
                             </Button>
 

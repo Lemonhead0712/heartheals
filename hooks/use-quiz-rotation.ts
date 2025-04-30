@@ -10,6 +10,7 @@ type QuizHistory = {
 
 export function useQuizRotation(quizType: string) {
   const [shownQuestionIds, setShownQuestionIds] = useState<string[]>([])
+  const [currentQuizQuestions, setCurrentQuizQuestions] = useState<string[]>([])
 
   // Load quiz history from localStorage
   useEffect(() => {
@@ -55,6 +56,7 @@ export function useQuizRotation(quizType: string) {
 
       // Update state
       setShownQuestionIds([...shownQuestionIds, ...questionIds])
+      setCurrentQuizQuestions(questionIds)
     } catch (error) {
       console.error("Error saving quiz history:", error)
     }
@@ -62,6 +64,7 @@ export function useQuizRotation(quizType: string) {
 
   return {
     shownQuestionIds,
+    currentQuizQuestions,
     saveQuizSession,
   }
 }

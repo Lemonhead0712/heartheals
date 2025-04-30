@@ -123,12 +123,9 @@ export function AppStatusDashboard() {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="status" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3 mb-4">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
             <TabsTrigger value="status" className="text-purple-700 data-[state=active]:bg-purple-100">
               System Status
-            </TabsTrigger>
-            <TabsTrigger value="metrics" className="text-purple-700 data-[state=active]:bg-purple-100">
-              App Metrics
             </TabsTrigger>
             <TabsTrigger value="user" className="text-purple-700 data-[state=active]:bg-purple-100">
               Your Usage
@@ -163,80 +160,6 @@ export function AppStatusDashboard() {
                       </Badge>
                     </div>
                   ))}
-                </div>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="metrics">
-            {isLoading ? (
-              <div className="flex justify-center items-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-                <span className="ml-2 text-purple-700">Loading app metrics...</span>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-purple-50 p-4 rounded-md">
-                    <h3 className="text-sm font-medium text-purple-700 mb-1">Total Users</h3>
-                    <p className="text-2xl font-bold text-purple-800">{appMetrics?.totalUsers.toLocaleString()}</p>
-                  </div>
-                  <div className="bg-purple-50 p-4 rounded-md">
-                    <h3 className="text-sm font-medium text-purple-700 mb-1">Active Users</h3>
-                    <p className="text-2xl font-bold text-purple-800">{appMetrics?.activeUsers.toLocaleString()}</p>
-                    <div className="mt-2">
-                      <div className="flex justify-between text-xs text-purple-600 mb-1">
-                        <span>Active Rate</span>
-                        <span>
-                          {appMetrics ? Math.round((appMetrics.activeUsers / appMetrics.totalUsers) * 100) : 0}%
-                        </span>
-                      </div>
-                      <Progress
-                        value={appMetrics ? Math.round((appMetrics.activeUsers / appMetrics.totalUsers) * 100) : 0}
-                        className="h-1 bg-purple-100"
-                        indicatorClassName="bg-purple-500"
-                      />
-                    </div>
-                  </div>
-                  <div className="bg-purple-50 p-4 rounded-md">
-                    <h3 className="text-sm font-medium text-purple-700 mb-1">Premium Users</h3>
-                    <p className="text-2xl font-bold text-purple-800">{appMetrics?.premiumUsers.toLocaleString()}</p>
-                    <div className="mt-2">
-                      <div className="flex justify-between text-xs text-purple-600 mb-1">
-                        <span>Conversion Rate</span>
-                        <span>
-                          {appMetrics ? Math.round((appMetrics.premiumUsers / appMetrics.totalUsers) * 100) : 0}%
-                        </span>
-                      </div>
-                      <Progress
-                        value={appMetrics ? Math.round((appMetrics.premiumUsers / appMetrics.totalUsers) * 100) : 0}
-                        className="h-1 bg-purple-100"
-                        indicatorClassName="bg-purple-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-purple-800">Content Metrics</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-pink-50 p-4 rounded-md">
-                      <h4 className="text-sm font-medium text-pink-700 mb-1">Emotion Logs</h4>
-                      <p className="text-2xl font-bold text-pink-800">
-                        {appMetrics?.totalEmotionLogs.toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="bg-blue-50 p-4 rounded-md">
-                      <h4 className="text-sm font-medium text-blue-700 mb-1">Journal Entries</h4>
-                      <p className="text-2xl font-bold text-blue-800">
-                        {appMetrics?.totalJournalEntries.toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="bg-purple-50 p-4 rounded-md">
-                      <h4 className="text-sm font-medium text-purple-700 mb-1">Quizzes Completed</h4>
-                      <p className="text-2xl font-bold text-purple-800">{appMetrics?.totalQuizzes.toLocaleString()}</p>
-                    </div>
-                  </div>
                 </div>
               </div>
             )}
