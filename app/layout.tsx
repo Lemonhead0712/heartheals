@@ -14,6 +14,7 @@ import { SwipeNavigationTutorial } from "@/components/swipe-navigation-tutorial"
 import { OfflineIndicator } from "@/components/offline-indicator"
 import { PWASetup } from "./pwa"
 import { AppInstallPrompt } from "@/components/app-install-prompt"
+import { ScrollRestorationProvider } from "@/components/scroll-restoration-provider"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -65,18 +66,20 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
           <SubscriptionProvider>
             <HapticProvider>
-              <PWASetup />
-              <div className="flex flex-1 flex-col">
-                <DesktopNav />
-                {children}
-                <Footer />
-              </div>
-              <BottomNav />
-              <SubscriptionTestPanel />
-              <SwipeNavigationTutorial />
-              <OfflineIndicator />
-              <AppInstallPrompt />
-              <Toaster />
+              <ScrollRestorationProvider>
+                <PWASetup />
+                <div className="flex flex-1 flex-col">
+                  <DesktopNav />
+                  {children}
+                  <Footer />
+                </div>
+                <BottomNav />
+                <SubscriptionTestPanel />
+                <SwipeNavigationTutorial />
+                <OfflineIndicator />
+                <AppInstallPrompt />
+                <Toaster />
+              </ScrollRestorationProvider>
             </HapticProvider>
           </SubscriptionProvider>
         </ThemeProvider>

@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useRef, useEffect, useState } from "react"
+import { useRef, useEffect, useState, useCallback } from "react"
 import { cn } from "@/lib/utils"
 import { motion } from "framer-motion"
 import { useSwipeNavigation } from "@/hooks/use-swipe-navigation"
@@ -17,6 +17,7 @@ interface PageContainerProps {
   disableSwipe?: boolean
   withRefresh?: boolean
   onRefresh?: () => Promise<void>
+  scrollSnapType?: "none" | "y mandatory" | "y proximity"
 }
 
 export function PageContainer({
@@ -26,6 +27,7 @@ export function PageContainer({
   disableSwipe = false,
   withRefresh = false,
   onRefresh,
+  scrollSnapType = "none",
 }: PageContainerProps) {
   const { swipeProgress, swipeDirection, isAnimating, canSwipeLeft, canSwipeRight } = useSwipeNavigation()
   const { isMobile, safeAreaInsets } = useMobile()
@@ -36,6 +38,44 @@ export function PageContainer({
   const refreshing = useRef(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [refreshProgress, setRefreshProgress] = useState(0)
+  const [scrollPosition, setScrollPosition] = useState(0)
+  const [isScrolling, setIsScrolling] = useState(false)
+  const scrollTimeout = useRef<NodeJS.Timeout | null>(null)
+
+  // Track scroll position and scrolling state
+  const handleScroll = useCallback(() => {
+    if (!containerRef.current) return
+
+    const position = containerRef.current.scrollTop
+    setScrollPosition(position)
+
+    // Set scrolling state with debounce
+    setIsScrolling(true)
+
+    if (scrollTimeout.current) {
+      clearTimeout(scrollTimeout.current)
+    }
+
+    scrollTimeout.current = setTimeout(() => {
+      setIsScrolling(false)
+    }, 150)
+  }, [])
+
+  // Apply scroll optimizations
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    // Add passive scroll listener for performance
+    container.addEventListener("scroll", handleScroll, { passive: true })
+
+    return () => {
+      container.removeEventListener("scroll", handleScroll)
+      if (scrollTimeout.current) {
+        clearTimeout(scrollTimeout.current)
+      }
+    }
+  }, [handleScroll])
 
   // Handle pull-to-refresh functionality
   useEffect(() => {
@@ -111,7 +151,12 @@ export function PageContainer({
   return (
     <motion.main
       ref={containerRef}
-      className={cn("flex-1 relative overflow-x-hidden overflow-y-auto", fullHeight ? "min-h-screen" : "", className)}
+      className={cn(
+        "flex-1 relative overflow-x-hidden overflow-y-auto scroll-smooth",
+        fullHeight ? "min-h-screen" : "",
+        isScrolling ? "momentum-scroll" : "",
+        className,
+      )}
       animate={{
         x: isAnimating && !disableSwipe ? (swipeDirection === "left" ? "-5%" : "5%") : 0,
         opacity: isAnimating && !disableSwipe ? 0.8 : 1,
@@ -123,6 +168,8 @@ export function PageContainer({
         paddingBottom: `${safeAreaInsets.bottom}px`,
         paddingLeft: `${safeAreaInsets.left}px`,
         paddingRight: `${safeAreaInsets.right}px`,
+        scrollSnapType,
+        WebkitOverflowScrolling: "touch",
       }}
     >
       {/* Pull-to-refresh indicator */}
@@ -178,6 +225,17 @@ export function PageContainer({
         <div className="sticky top-0 bg-yellow-500 text-white text-center py-1 text-sm z-50">
           You're offline. Some features may be unavailable.
         </div>
+      )}
+
+      {/* Scroll to top button - appears when scrolled down */}
+      {scrollPosition > 500 && (
+        <button
+          onClick={() => containerRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed bottom-20 right-4 z-40 bg-purple-600 text-white rounded-full p-3 shadow-lg opacity-80 hover:opacity-100 transition-opacity"
+          aria-label="Scroll to top"
+        >
+          <ChevronDown className="h-5 w-5 transform rotate-180" />
+        </button>
       )}
 
       {children}

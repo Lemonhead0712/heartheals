@@ -101,6 +101,8 @@
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior: none;
     touch-action: manipulation;
+    height: 100%;
+    overflow: hidden; /* Prevent body-level scrolling */
   }
 
   body {
@@ -110,6 +112,10 @@
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
+    height: 100%;
+    overflow: hidden; /* Prevent body-level scrolling */
+    position: fixed; /* Prevent iOS Safari elastic scrolling */
+    width: 100%;
   }
 
   /* Allow text selection in specific elements */
@@ -161,6 +167,46 @@
   * {
     -webkit-overflow-scrolling: touch;
   }
+}
+
+/* Enhanced scrolling utilities */
+.scroll-smooth {
+  scroll-behavior: smooth;
+}
+
+.momentum-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: auto; /* Allow momentum scrolling during active scrolling */
+}
+
+/* Scroll snap utilities */
+.scroll-snap-y {
+  scroll-snap-type: y mandatory;
+}
+
+.scroll-snap-y-proximity {
+  scroll-snap-type: y proximity;
+}
+
+.scroll-snap-start {
+  scroll-snap-align: start;
+}
+
+.scroll-snap-center {
+  scroll-snap-align: center;
+}
+
+.scroll-snap-end {
+  scroll-snap-align: end;
+}
+
+/* Prevent scroll chaining */
+.overscroll-none {
+  overscroll-behavior: none;
+}
+
+.overscroll-contain {
+  overscroll-behavior: contain;
 }
 
 /* Custom animation for chart elements */

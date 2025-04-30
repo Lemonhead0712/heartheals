@@ -122,14 +122,20 @@ export function useOrientationChange(callback: (orientation: "portrait" | "lands
   }, [callback])
 }
 
-// Detect network status for offline capabilities
+// Network status detection
 export function useNetworkStatus() {
-  const [isOnline, setIsOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine : true)
+  const [isOnline, setIsOnline] = useState(true)
 
   useEffect(() => {
+    if (typeof window === "undefined") return
+
     const handleOnline = () => setIsOnline(true)
     const handleOffline = () => setIsOnline(false)
 
+    // Set initial status
+    setIsOnline(navigator.onLine)
+
+    // Add event listeners
     window.addEventListener("online", handleOnline)
     window.addEventListener("offline", handleOffline)
 
@@ -140,4 +146,103 @@ export function useNetworkStatus() {
   }, [])
 
   return isOnline
+}
+
+// Scroll performance testing
+export function useScrollPerformance() {
+  const [fps, setFps] = useState(60)
+  const [jank, setJank] = useState(0)
+  const [isMonitoring, setIsMonitoring] = useState(false)
+
+  const startMonitoring = () => {
+    if (typeof window === "undefined") return
+    setIsMonitoring(true)
+  }
+
+  const stopMonitoring = () => {
+    setIsMonitoring(false)
+  }
+
+  useEffect(() => {
+    if (!isMonitoring || typeof window === "undefined") return
+
+    let frameCount = 0
+    let lastTime = performance.now()
+    const frameTimes: number[] = []
+    let rafId: number
+
+    const measureFps = (timestamp: number) => {
+      frameCount++
+      const elapsed = timestamp - lastTime
+      frameTimes.push(elapsed)
+
+      // Keep only the last 60 frames
+      if (frameTimes.length > 60) {
+        frameTimes.shift()
+      }
+
+      // Calculate FPS every second
+      if (timestamp - lastTime >= 1000) {
+        const averageFrameTime = frameTimes.reduce((sum, time) => sum + time, 0) / frameTimes.length
+        const currentFps = Math.round(1000 / averageFrameTime)
+
+        // Calculate jank (percentage of frames that took longer than 16.7ms)
+        const jankFrames = frameTimes.filter((time) => time > 16.7).length
+        const jankPercentage = Math.round((jankFrames / frameTimes.length) * 100)
+
+        setFps(currentFps)
+        setJank(jankPercentage)
+
+        frameCount = 0
+        lastTime = timestamp
+      }
+
+      rafId = requestAnimationFrame(measureFps)
+    }
+
+    rafId = requestAnimationFrame(measureFps)
+
+    return () => {
+      cancelAnimationFrame(rafId)
+    }
+  }, [isMonitoring])
+
+  return { fps, jank, startMonitoring, stopMonitoring, isMonitoring }
+}
+
+// Detect scroll capability
+export function detectScrollCapability() {
+  if (typeof window === "undefined")
+    return {
+      smoothScrollSupported: true,
+      passiveEventsSupported: true,
+      momentumScrollSupported: true,
+    }
+
+  // Check for smooth scrolling support
+  const smoothScrollSupported = "scrollBehavior" in document.documentElement.style
+
+  // Check for passive event listeners
+  let passiveEventsSupported = false
+  try {
+    const options = {
+      get passive() {
+        passiveEventsSupported = true
+        return false
+      },
+    }
+    window.addEventListener("test", null as any, options)
+    window.removeEventListener("test", null as any, options)
+  } catch (err) {
+    passiveEventsSupported = false
+  }
+
+  // Check for momentum scrolling (best guess based on platform)
+  const momentumScrollSupported = /iPhone|iPad|iPod|Android/.test(navigator.userAgent)
+
+  return {
+    smoothScrollSupported,
+    passiveEventsSupported,
+    momentumScrollSupported,
+  }
 }
