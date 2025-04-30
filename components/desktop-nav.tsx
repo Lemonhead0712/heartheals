@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BookHeart, Clipboard, Home, Wind, Sparkles, Activity, HelpCircle, Info } from "lucide-react"
+import { BookHeart, Clipboard, Home, Wind, Sparkles, Activity } from "lucide-react"
 import { Logo } from "./logo"
 import { cn } from "@/lib/utils"
 import { useSubscription } from "@/contexts/subscription-context"
@@ -31,7 +31,7 @@ export function DesktopNav() {
     }
   }
 
-  const mainNavItems = [
+  const navItems = [
     {
       name: "Home",
       href: "/",
@@ -64,19 +64,6 @@ export function DesktopNav() {
     },
   ]
 
-  const secondaryNavItems = [
-    {
-      name: "About Us",
-      href: "/about",
-      icon: Info,
-    },
-    {
-      name: "FAQ",
-      href: "/faq",
-      icon: HelpCircle,
-    },
-  ]
-
   return (
     <>
       <header
@@ -85,41 +72,15 @@ export function DesktopNav() {
           scrolled ? "bg-white/90 backdrop-blur-md shadow-sm" : "bg-transparent",
         )}
       >
-        <div className="max-w-6xl mx-auto px-6 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link href="/" className="flex items-center space-x-2">
-                <Logo size="small" showText={true} />
-              </Link>
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+          <Link href="/" className="flex items-center space-x-2">
+            <Logo size="small" showText={true} />
+          </Link>
 
-              {/* Main Navigation */}
-              <nav className="hidden md:flex items-center ml-6 space-x-1">
-                {mainNavItems.map((item) => {
-                  const isActive = pathname === item.href
-
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={handleNavItemClick}
-                      className={cn(
-                        "flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                        isActive
-                          ? "text-purple-700 bg-purple-50"
-                          : "text-gray-600 hover:text-purple-600 hover:bg-purple-50/50",
-                      )}
-                    >
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.name}</span>
-                    </Link>
-                  )
-                })}
-              </nav>
-            </div>
-
-            {/* Secondary Navigation (About, FAQ) */}
-            <div className="hidden md:flex items-center space-x-1">
-              {secondaryNavItems.map((item) => {
+          {/* Desktop Navigation - Hidden on mobile */}
+          <div className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 hidden md:block">
+            <nav className="hidden md:flex items-center space-x-1">
+              {navItems.map((item) => {
                 const isActive = pathname === item.href
 
                 return (
@@ -139,13 +100,13 @@ export function DesktopNav() {
                   </Link>
                 )
               })}
-            </div>
+            </nav>
           </div>
         </div>
       </header>
 
       {/* Spacer to prevent content from being hidden under the fixed header */}
-      <div className="h-16 md:block hidden" />
+      <div className="h-16" />
     </>
   )
 }
