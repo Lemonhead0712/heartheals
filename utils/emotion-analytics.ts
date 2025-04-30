@@ -22,6 +22,8 @@ export type EmotionDistribution = {
 export type IntensityOverTime = {
   day: string
   intensity: number
+  count?: number // Add count for visualization purposes
+  entries?: EmotionEntry[] // Add entries for reference (if needed)
 }
 
 export type EmotionAnalytics = {
@@ -92,9 +94,9 @@ function getEmotionColor(emotion: string): string {
   return `hsl(${h}, 70%, 50%)`
 }
 
-// Group entries by day for the intensity chart
+// Enhanced function to group entries by day for the intensity chart
 function groupEntriesByDay(entries: EmotionEntry[]): IntensityOverTime[] {
-  const dayMap = new Map<string, { total: number; count: number }>()
+  const dayMap = new Map<string, { total: number; count: number; entries: EmotionEntry[] }>()
 
   // Sort entries by timestamp
   const sortedEntries = [...entries].sort((a, b) => {
@@ -107,18 +109,21 @@ function groupEntriesByDay(entries: EmotionEntry[]): IntensityOverTime[] {
     const day = date.toLocaleDateString("en-US", { weekday: "short" })
 
     if (!dayMap.has(day)) {
-      dayMap.set(day, { total: 0, count: 0 })
+      dayMap.set(day, { total: 0, count: 0, entries: [] })
     }
 
     const current = dayMap.get(day)!
     current.total += entry.intensity
     current.count += 1
+    current.entries.push(entry)
   })
 
-  // Convert to array format needed for chart
-  return Array.from(dayMap.entries()).map(([day, { total, count }]) => ({
+  // Convert to array format needed for chart with enhanced data
+  return Array.from(dayMap.entries()).map(([day, { total, count, entries }]) => ({
     day,
     intensity: Math.round((total / count) * 10) / 10, // Round to 1 decimal place
+    count: count, // Add count for visualization purposes
+    entries: entries, // Add entries for reference (if needed)
   }))
 }
 

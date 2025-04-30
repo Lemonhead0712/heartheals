@@ -1,97 +1,68 @@
-// Date formatting utilities for consistent date/time display across the application
-
-/**
- * Format a date relative to the current time (e.g., "2 minutes ago", "Yesterday")
- */
-export function formatRelativeTime(date: Date | string): string {
+// Function to format relative time (e.g., "5 minutes ago")
+export function formatRelativeTime(date: Date): string {
   const now = new Date()
-  const targetDate = typeof date === "string" ? new Date(date) : date
+  const diffMs = now.getTime() - new Date(date).getTime()
+  const diffSecs = Math.round(diffMs / 1000)
+  const diffMins = Math.round(diffSecs / 60)
+  const diffHours = Math.round(diffMins / 60)
+  const diffDays = Math.round(diffHours / 24)
 
-  const diffTime = Math.abs(now.getTime() - targetDate.getTime())
-  const diffSeconds = Math.floor(diffTime / 1000)
-  const diffMinutes = Math.floor(diffSeconds / 60)
-  const diffHours = Math.floor(diffMinutes / 60)
-  const diffDays = Math.floor(diffHours / 24)
-
-  // Return different formats based on how long ago the date was
-  if (diffSeconds < 5) {
-    return "Just now"
-  } else if (diffSeconds < 60) {
-    return `${diffSeconds} seconds ago`
-  } else if (diffMinutes === 1) {
+  if (diffSecs < 10) {
+    return "just now"
+  } else if (diffSecs < 60) {
+    return `${diffSecs} seconds ago`
+  } else if (diffMins === 1) {
     return "1 minute ago"
-  } else if (diffMinutes < 60) {
-    return `${diffMinutes} minutes ago`
+  } else if (diffMins < 60) {
+    return `${diffMins} minutes ago`
   } else if (diffHours === 1) {
     return "1 hour ago"
   } else if (diffHours < 24) {
     return `${diffHours} hours ago`
   } else if (diffDays === 1) {
-    return "Yesterday"
-  } else if (diffDays < 7) {
+    return "yesterday"
+  } else if (diffDays < 30) {
     return `${diffDays} days ago`
   } else {
-    // For older dates, return a standard format
-    return targetDate.toLocaleDateString([], {
+    return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
-      year: now.getFullYear() !== targetDate.getFullYear() ? "numeric" : undefined,
+      year: new Date().getFullYear() !== date.getFullYear() ? "numeric" : undefined,
     })
   }
 }
 
-/**
- * Format a date with time for detailed display
- */
-export function formatDateTime(date: Date | string): string {
-  const targetDate = typeof date === "string" ? new Date(date) : date
+// Function to format a date range
+export function formatDateRange(start: Date, end: Date): string {
+  // If in same year and month
+  if (start.getFullYear() === end.getFullYear() && start.getMonth() === end.getMonth()) {
+    return `${start.toLocaleDateString("en-US", { month: "short" })} ${start.getDate()} - ${end.getDate()}, ${start.getFullYear()}`
+  }
 
-  return (
-    targetDate.toLocaleDateString([], {
-      month: "short",
-      day: "numeric",
-      year: new Date().getFullYear() !== targetDate.getFullYear() ? "numeric" : undefined,
-    }) +
-    " at " +
-    targetDate.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  )
-}
+  // If in same year
+  if (start.getFullYear() === end.getFullYear()) {
+    return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${end.toLocaleDateString(
+      "en-US",
+      { month: "short", day: "numeric" },
+    )}, ${start.getFullYear()}`
+  }
 
-/**
- * Get a formatted date range string (e.g., "May 1 - May 7, 2023")
- */
-export function formatDateRange(startDate: Date, endDate: Date): string {
-  const sameYear = startDate.getFullYear() === endDate.getFullYear()
-  const sameMonth = startDate.getMonth() === endDate.getMonth()
-
-  const startFormat: Intl.DateTimeFormatOptions = {
+  // Different years
+  return `${start.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
-    year: !sameYear ? "numeric" : undefined,
-  }
-
-  const endFormat: Intl.DateTimeFormatOptions = {
-    month: sameMonth ? undefined : "short",
-    day: "numeric",
     year: "numeric",
-  }
-
-  return `${startDate.toLocaleDateString([], startFormat)} - ${endDate.toLocaleDateString([], endFormat)}`
+  })} - ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
 }
 
-/**
- * Get the start and end dates for different time periods
- */
+// Function to get start and end dates for a specific time period
 export function getDateRangeForPeriod(period: "day" | "week" | "month" | "year"): { start: Date; end: Date } {
-  const end = new Date() // Now
+  const end = new Date()
   const start = new Date()
 
   switch (period) {
     case "day":
-      start.setHours(0, 0, 0, 0) // Start of today
+      start.setHours(0, 0, 0, 0)
       break
     case "week":
       start.setDate(start.getDate() - 7)
@@ -107,38 +78,21 @@ export function getDateRangeForPeriod(period: "day" | "week" | "month" | "year")
   return { start, end }
 }
 
-/**
- * Get a human-readable string for the current date
- */
-export function getCurrentDateString(): string {
-  const now = new Date()
-  const options: Intl.DateTimeFormatOptions = {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  }
-
-  return now.toLocaleDateString(undefined, options)
+// Calculate the day difference between two dates
+export function getDayDifference(date1: Date, date2: Date): number {
+  const diffTime = Math.abs(date2.getTime() - date1.getTime())
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 }
 
-/**
- * Calculate the time elapsed since a given date in a human-readable format
- */
-export function getTimeElapsedSince(date: Date | string): string {
-  const startDate = typeof date === "string" ? new Date(date) : date
+// Format date for display in charts
+export function formatChartDate(date: Date): string {
   const now = new Date()
 
-  const diffTime = Math.abs(now.getTime() - startDate.getTime())
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-  const diffMonths = Math.floor(diffDays / 30)
-  const diffYears = Math.floor(diffDays / 365)
-
-  if (diffYears > 0) {
-    return `${diffYears} ${diffYears === 1 ? "year" : "years"}`
-  } else if (diffMonths > 0) {
-    return `${diffMonths} ${diffMonths === 1 ? "month" : "months"}`
+  if (getDayDifference(date, now) <= 1) {
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  } else if (getDayDifference(date, now) < 7) {
+    return date.toLocaleDateString("en-US", { weekday: "short" })
   } else {
-    return `${diffDays} ${diffDays === 1 ? "day" : "days"}`
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
   }
 }

@@ -16,6 +16,8 @@ import {
   ResponsiveContainer,
   Area,
   ReferenceLine,
+  Legend,
+  Scatter,
 } from "recharts"
 import { processEmotionData, type EmotionEntry } from "@/utils/emotion-analytics"
 import { LoadingSpinner } from "./ui/loading-spinner"
@@ -40,6 +42,73 @@ import { EmotionChartTooltip } from "./emotion-chart-tooltip"
 import { ResponsiveEmotionPieChart } from "./responsive-emotion-pie-chart"
 import { formatRelativeTime, getDateRangeForPeriod, formatDateRange } from "@/utils/date-utils"
 import { useRealTimeUpdate } from "@/hooks/use-real-time-update"
+import { useMediaQuery } from "@/hooks/use-media-query"
+
+// Custom scatter dot component with animation
+const CustomScatterDot = (props: any) => {
+  const { cx, cy, fill } = props
+
+  return (
+    <g>
+      {/* Pulse effect */}
+      <circle cx={cx} cy={cy} r={6} fill={fill} opacity={0.2} className="animate-pulse-slow" />
+
+      {/* Main dot */}
+      <circle cx={cx} cy={cy} r={4} stroke="white" strokeWidth={1.5} fill={fill} className="drop-shadow-sm" />
+    </g>
+  )
+}
+
+// Custom active dot with enhanced appearance
+const CustomActiveDot = (props: any) => {
+  const { cx, cy, stroke, fill } = props
+
+  return (
+    <g>
+      {/* Outer ring */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={8}
+        stroke={stroke}
+        strokeWidth={2}
+        fill="none"
+        className="animate-ping-once"
+        style={{ animationDuration: "1s" }}
+      />
+
+      {/* Inner dot */}
+      <circle cx={cx} cy={cy} r={4} stroke="white" strokeWidth={1.5} fill={fill} className="drop-shadow-md" />
+    </g>
+  )
+}
+
+// Enhanced bar shape
+const CustomBar = (props: any) => {
+  const { x, y, width, height, fill } = props
+  const radius = 4
+
+  return (
+    <g>
+      <defs>
+        <linearGradient id={`barGradient-${fill.replace("#", "")}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={fill} stopOpacity={0.9} />
+          <stop offset="100%" stopColor={fill} stopOpacity={0.5} />
+        </linearGradient>
+      </defs>
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        fill={`url(#barGradient-${fill.replace("#", "")})`}
+        rx={radius}
+        ry={radius}
+        className="drop-shadow-sm transition-all duration-300"
+      />
+    </g>
+  )
+}
 
 interface EmotionalAnalyticsProps {
   emotionLogs?: EmotionEntry[]
@@ -62,6 +131,11 @@ export function EnhancedEmotionalAnalytics({
   const [showEmotionDetails, setShowEmotionDetails] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
+  const [highlightedDay, setHighlightedDay] = useState<string | null>(null)
+
+  // Detect screen size for responsive design
+  const isMobile = useMediaQuery("(max-width: 640px)")
+  const isTablet = useMediaQuery("(max-width: 1024px)")
 
   // Update the component every minute to keep relative times current
   const currentTime = useRealTimeUpdate(60000)
@@ -116,6 +190,29 @@ export function EnhancedEmotionalAnalytics({
 
   // Process the filtered data
   const analytics = useMemo(() => processEmotionData(filteredData), [filteredData])
+
+  // Enhanced data for area chart with scatter points
+  const enhancedChartData = useMemo(() => {
+    if (!analytics.intensityOverTime || analytics.intensityOverTime.length === 0) {
+      return []
+    }
+
+    // Add additional data for visualization enhancements
+    return analytics.intensityOverTime.map((item) => {
+      // Calculate additional metrics for visualization
+      const hasMultipleEntries = typeof item.count === "number" && item.count > 1
+
+      return {
+        ...item,
+        // Add smooth transitions for area chart
+        smoothIntensity: item.intensity,
+        // Add point size based on data counts if available
+        pointSize: hasMultipleEntries ? Math.min(Math.max(item.count, 3), 7) : 3,
+        // Add moving average if we have enough data points
+        movingAvg: item.intensity, // Simplified, would calculate actual moving average with enough data
+      }
+    })
+  }, [analytics.intensityOverTime])
 
   // Group entries by day and emotion for stacked chart
   const dailyEmotionGroups = useMemo(() => {
@@ -371,6 +468,15 @@ export function EnhancedEmotionalAnalytics({
     }
   }
 
+  // Handle day highlighting on chart hover
+  const handleDayHighlight = (data: any) => {
+    if (data && data.activeLabel) {
+      setHighlightedDay(data.activeLabel)
+    } else {
+      setHighlightedDay(null)
+    }
+  }
+
   return (
     <Card className="border-blue-200 bg-white/80 backdrop-blur-sm shadow-md">
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
@@ -508,7 +614,6 @@ export function EnhancedEmotionalAnalytics({
                       ${insight.type === "negative" ? "border-red-200 bg-red-50" : ""}
                       ${insight.type === "neutral" ? "border-blue-200 bg-blue-50" : ""}
                       ${insight.type === "survey" ? "border-purple-200 bg-purple-50" : ""}
-                      ${insight.type === "survey" ? "border-purple-200 bg-purple-50" : ""}
                     `}
                     >
                       <div className="flex items-start justify-between">
@@ -586,112 +691,192 @@ export function EnhancedEmotionalAnalytics({
                 </TabsTrigger>
               </TabsList>
 
-              {/* Trends Tab */}
+              {/* Trends Tab - ENHANCED VISUALIZATION */}
               <TabsContent value="trends" className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h3 className="text-sm font-medium text-pink-700">Intensity Over Time</h3>
                   <span className="text-xs text-pink-500">Real-time data</span>
                 </div>
 
-                {analytics.intensityOverTime.length > 1 ? (
+                {enhancedChartData.length > 1 ? (
                   <div className="relative">
-                    {/* Responsive container with aspect ratio */}
-                    <div className="w-full aspect-[3/2] sm:aspect-[2/1] md:h-[250px] md:aspect-auto touch-manipulation">
+                    {/* Enhanced chart container with better responsiveness */}
+                    <div className="w-full aspect-[3/2] sm:aspect-[2/1] md:h-[300px] md:aspect-auto touch-manipulation rounded-lg bg-gradient-to-b from-white to-pink-50 p-4 shadow-sm border border-pink-100">
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart
-                          data={analytics.intensityOverTime}
+                          data={enhancedChartData}
                           margin={{
-                            top: 10,
-                            right: 10,
+                            top: 16,
+                            right: 16,
                             left: 0,
                             bottom: 5,
                           }}
+                          onMouseMove={handleDayHighlight}
+                          onMouseLeave={() => setHighlightedDay(null)}
                         >
+                          {/* Enhanced gradients */}
                           <defs>
-                            <linearGradient id="intensityGradient" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#E91E63" stopOpacity={0.3} />
-                              <stop offset="95%" stopColor="#E91E63" stopOpacity={0} />
+                            <linearGradient id="colorIntensity" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#E91E63" stopOpacity={0.4} />
+                              <stop offset="95%" stopColor="#E91E63" stopOpacity={0.05} />
                             </linearGradient>
+                            <linearGradient id="colorMoving" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#9C27B0" stopOpacity={0.3} />
+                              <stop offset="95%" stopColor="#9C27B0" stopOpacity={0.05} />
+                            </linearGradient>
+                            <filter id="shadow" filterUnits="userSpaceOnUse" x="-20" y="-20" width="200%" height="200%">
+                              <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#00000020" />
+                            </filter>
                           </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+
+                          {/* Better grid styling */}
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} strokeOpacity={0.5} />
+
+                          {/* Enhanced axes */}
                           <XAxis
                             dataKey="day"
-                            tick={{ fontSize: 12 }}
-                            stroke="#d1d5db"
-                            tickMargin={8}
-                            axisLine={{ stroke: "#e5e7eb" }}
-                            tickLine={false}
+                            tick={{ fontSize: 12, fill: "#9f1239" }}
+                            stroke="#f9a8d4"
+                            tickMargin={10}
+                            axisLine={{ stroke: "#f9a8d4" }}
+                            tickLine={{ stroke: "#f9a8d4" }}
                             padding={{ left: 5, right: 5 }}
                           />
                           <YAxis
                             domain={[0, 10]}
-                            tick={{ fontSize: 12 }}
-                            stroke="#d1d5db"
+                            tick={{ fontSize: 12, fill: "#9f1239" }}
+                            stroke="#f9a8d4"
                             tickCount={6}
-                            tickMargin={8}
-                            axisLine={{ stroke: "#e5e7eb" }}
-                            tickLine={false}
+                            tickMargin={10}
+                            axisLine={{ stroke: "#f9a8d4" }}
+                            tickLine={{ stroke: "#f9a8d4" }}
                             label={{
                               value: "Intensity",
                               angle: -90,
                               position: "insideLeft",
                               style: { textAnchor: "middle", fill: "#d1467d", fontSize: 12, fontWeight: 500 },
                               offset: -5,
-                              dx: -10,
+                              dx: -15,
                             }}
                           />
+
+                          {/* Enhanced tooltip */}
                           <Tooltip
                             content={<EmotionChartTooltip />}
                             cursor={{ stroke: "#d1467d", strokeWidth: 1, strokeDasharray: "3 3" }}
-                            wrapperStyle={{ outline: "none" }}
+                            wrapperStyle={{ outline: "none", filter: "drop-shadow(0px 2px 8px rgba(0, 0, 0, 0.15))" }}
                             isAnimationActive={true}
                             position={{ y: 0 }}
                           />
+
+                          {/* Area under the curve with gradient */}
                           <Area
-                            type="monotone"
+                            type="monotoneX"
                             dataKey="intensity"
                             stroke="#E91E63"
-                            strokeWidth={2.5}
+                            strokeWidth={3}
                             fillOpacity={1}
-                            fill="url(#intensityGradient)"
-                            activeDot={{
-                              r: 6,
-                              stroke: "#fff",
-                              strokeWidth: 2,
-                              fill: "#E91E63",
-                              className: "drop-shadow-md hover:drop-shadow-lg transition-all duration-200",
-                            }}
+                            fill="url(#colorIntensity)"
+                            activeDot={(props) => <CustomActiveDot {...props} fill="#E91E63" stroke="#fff" />}
                             animationDuration={1500}
                             animationEasing="ease-out"
+                            isAnimationActive={!isMobile}
                           />
+
+                          {/* Scatter points to emphasize data points */}
+                          <Scatter
+                            name="Entries"
+                            data={enhancedChartData}
+                            fill="#E91E63"
+                            shape={(props) => <CustomScatterDot {...props} />}
+                            isAnimationActive={!isMobile}
+                          />
+
+                          {/* Reference line for average */}
                           <ReferenceLine
                             y={analytics.averageIntensity}
                             stroke="#9C27B0"
                             strokeDasharray="3 3"
-                            strokeWidth={1.5}
+                            strokeWidth={2}
                             label={{
                               value: `Avg: ${analytics.averageIntensity}`,
                               position: "right",
                               fill: "#9C27B0",
                               fontSize: 11,
-                              fontWeight: 500,
+                              fontWeight: 600,
+                              backgroundColor: "#fff",
+                              padding: 5,
                             }}
+                          />
+
+                          {/* Enhanced legend */}
+                          <Legend
+                            verticalAlign="top"
+                            height={36}
+                            content={() => (
+                              <div className="flex items-center justify-center mt-2 text-xs gap-4">
+                                <div className="flex items-center">
+                                  <div className="w-3 h-3 bg-pink-500 rounded-full mr-1"></div>
+                                  <span className="text-pink-700 font-medium">Intensity</span>
+                                </div>
+                                <div className="flex items-center">
+                                  <div
+                                    className="w-3 h-0.5 bg-purple-500 mr-1"
+                                    style={{ height: "2px", width: "12px" }}
+                                  ></div>
+                                  <span className="text-purple-700 font-medium">Average</span>
+                                </div>
+                              </div>
+                            )}
                           />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
 
-                    {/* Mobile-friendly legend */}
-                    <div className="flex items-center justify-center mt-2 text-xs text-pink-700 gap-4">
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 bg-pink-500 rounded-full mr-1"></div>
-                        <span>Intensity</span>
+                    {/* Enhanced data statistics */}
+                    {highlightedDay && (
+                      <div className="mt-3 p-2 bg-white border border-pink-200 rounded-md shadow-sm text-xs">
+                        <p className="font-medium text-pink-700">{highlightedDay}: Showing detailed emotion data</p>
                       </div>
-                      <div className="flex items-center">
-                        <div className="w-3 h-0.5 bg-purple-500 mr-1" style={{ height: "2px", width: "12px" }}></div>
-                        <span>Average</span>
+                    )}
+
+                    {/* Additional weekly trend visualization */}
+                    {dailyEmotionGroups.length > 1 && (
+                      <div className="mt-6">
+                        <h4 className="text-sm font-medium text-pink-700 mb-2">Emotional Composition by Day</h4>
+                        <div className="h-[200px] w-full bg-white rounded-lg border border-pink-100 shadow-sm p-2">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={dailyEmotionGroups} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+                              <XAxis
+                                dataKey="day"
+                                tick={{ fontSize: 11, fill: "#9f1239" }}
+                                axisLine={{ stroke: "#f9a8d4" }}
+                              />
+                              <YAxis tick={{ fontSize: 11, fill: "#9f1239" }} axisLine={{ stroke: "#f9a8d4" }} />
+                              <Tooltip
+                                wrapperStyle={{ outline: "none" }}
+                                contentStyle={{
+                                  borderRadius: "4px",
+                                  border: "1px solid #f9a8d4",
+                                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
+                                }}
+                              />
+                              <Legend wrapperStyle={{ paddingTop: "10px" }} iconType="circle" iconSize={8} />
+                              {analytics.emotionDistribution.slice(0, 5).map((item, index) => (
+                                <Bar
+                                  key={item.name}
+                                  dataKey={item.name}
+                                  stackId="a"
+                                  fill={item.color}
+                                  shape={(props) => <CustomBar {...props} fill={item.color} />}
+                                />
+                              ))}
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-pink-600 bg-pink-50 rounded-lg">
@@ -865,7 +1050,13 @@ export function EnhancedEmotionalAnalytics({
                                     }}
                                     labelStyle={{ color: "#be185d" }}
                                   />
-                                  <Bar dataKey="count" name="Responses" fill="#9C27B0" animationDuration={1500} />
+                                  <Bar
+                                    dataKey="count"
+                                    name="Responses"
+                                    fill="#9C27B0"
+                                    animationDuration={1500}
+                                    shape={(props) => <CustomBar {...props} fill="#9C27B0" />}
+                                  />
                                 </BarChart>
                               </ResponsiveContainer>
                             </div>
