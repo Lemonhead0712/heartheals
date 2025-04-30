@@ -1,204 +1,178 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter, usePathname } from "next/navigation"
-import { useMobile } from "./use-mobile"
-import { useHapticContext } from "@/contexts/haptic-context"
+import { useHaptic } from "@/hooks/use-haptic"
+import { useMobile } from "@/hooks/use-mobile"
 
-// Define the navigation routes in order
-const routes = ["/", "/emotional-log", "/breathe", "/thoughts", "/app-status", "/subscription"]
+// Define the main navigation routes in order
+const mainRoutes = ["/", "/emotional-log", "/breathe", "/thoughts", "/subscription"]
 
-// Define additional routes that aren't in the main navigation flow
-const additionalRoutes = ["/about", "/faq"]
+// Threshold for swipe distance to trigger navigation (in pixels)
+const SWIPE_THRESHOLD = 100
+// Threshold for swipe velocity to trigger navigation (in pixels per ms)
+const VELOCITY_THRESHOLD = 0.5
 
-interface SwipeState {
-  swipeProgress: number
-  swipeDirection: "left" | "right" | null
-  isAnimating: boolean
-  canSwipeLeft: boolean
-  canSwipeRight: boolean
-}
+type SwipeDirection = "left" | "right" | null
 
 export function useSwipeNavigation() {
   const router = useRouter()
   const pathname = usePathname()
-  const { haptic, settings } = useHapticContext()
-  const { isMobile, touchSupported } = useMobile()
+  const { triggerHaptic } = useHaptic()
+  const { isMobile } = useMobile()
 
-  const [state, setState] = useState<SwipeState>({
-    swipeProgress: 0,
-    swipeDirection: null,
-    isAnimating: false,
-    canSwipeLeft: false,
-    canSwipeRight: false,
-  })
+  const [swipeProgress, setSwipeProgress] = useState(0)
+  const [swipeDirection, setSwipeDirection] = useState<SwipeDirection>(null)
+  const [isAnimating, setIsAnimating] = useState(false)
+  const [canSwipeLeft, setCanSwipeLeft] = useState(false)
+  const [canSwipeRight, setCanSwipeRight] = useState(false)
 
-  const touchStartX = useRef<number | null>(null)
-  const touchStartY = useRef<number | null>(null)
-  const currentSwipe = useRef<number>(0)
-  const isVerticalScroll = useRef<boolean>(false)
-  const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  // Refs for touch handling
+  const touchStartX = useRef(0)
+  const touchStartY = useRef(0)
+  const touchEndX = useRef(0)
+  const touchStartTime = useRef(0)
+  const isSwiping = useRef(false)
 
-  // Determine if we can swipe in either direction based on current route
-  const updateSwipeAvailability = useCallback(() => {
-    if (!pathname) return
+  // Determine available navigation directions based on current route
+  useEffect(() => {
+    const currentIndex = mainRoutes.indexOf(pathname)
 
-    const currentIndex = routes.indexOf(pathname)
-    const isInMainRoutes = currentIndex !== -1
-
-    // If we're not in the main routes, we can only swipe to go back to the previous page
-    if (!isInMainRoutes) {
-      setState((prev) => ({
-        ...prev,
-        canSwipeLeft: false,
-        canSwipeRight: true, // Allow swiping right to go back
-      }))
+    // If the current path isn't in our main routes, disable swipe navigation
+    if (currentIndex === -1) {
+      setCanSwipeLeft(false)
+      setCanSwipeRight(false)
       return
     }
 
-    setState((prev) => ({
-      ...prev,
-      canSwipeLeft: currentIndex < routes.length - 1,
-      canSwipeRight: currentIndex > 0,
-    }))
+    setCanSwipeLeft(currentIndex < mainRoutes.length - 1)
+    setCanSwipeRight(currentIndex > 0)
   }, [pathname])
 
+  // Navigate to the next or previous route
+  const navigateToRoute = (direction: "left" | "right") => {
+    const currentIndex = mainRoutes.indexOf(pathname)
+    if (currentIndex === -1) return
+
+    let targetIndex
+    if (direction === "left" && currentIndex < mainRoutes.length - 1) {
+      targetIndex = currentIndex + 1
+    } else if (direction === "right" && currentIndex > 0) {
+      targetIndex = currentIndex - 1
+    } else {
+      return
+    }
+
+    // Trigger haptic feedback
+    triggerHaptic("medium")
+
+    // Animate the transition
+    setIsAnimating(true)
+    setSwipeDirection(direction)
+
+    // Navigate after a short delay to allow animation to play
+    setTimeout(() => {
+      router.push(mainRoutes[targetIndex])
+
+      // Reset animation state after navigation
+      setTimeout(() => {
+        setIsAnimating(false)
+        setSwipeDirection(null)
+        setSwipeProgress(0)
+      }, 300)
+    }, 200)
+  }
+
+  // Touch event handlers
+  const handleTouchStart = (e: TouchEvent) => {
+    if (!isMobile) return
+
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+    touchStartTime.current = Date.now()
+    isSwiping.current = true
+  }
+
+  const handleTouchMove = (e: TouchEvent) => {
+    if (!isMobile || !isSwiping.current) return
+
+    touchEndX.current = e.touches[0].clientX
+
+    // Calculate horizontal and vertical distance
+    const deltaX = touchEndX.current - touchStartX.current
+    const deltaY = e.touches[0].clientY - touchStartY.current
+
+    // If vertical scrolling is more prominent, don't interfere
+    if (Math.abs(deltaY) > Math.abs(deltaX)) {
+      isSwiping.current = false
+      setSwipeProgress(0)
+      return
+    }
+
+    // Determine if we can swipe in this direction
+    if ((deltaX > 0 && !canSwipeRight) || (deltaX < 0 && !canSwipeLeft)) {
+      // Allow some resistance when swiping beyond edges
+      setSwipeProgress(deltaX / 5)
+      return
+    }
+
+    // Calculate swipe progress as percentage of screen width
+    const screenWidth = window.innerWidth
+    const progress = (deltaX / screenWidth) * 100
+
+    // Limit progress to a reasonable range
+    const clampedProgress = Math.max(Math.min(progress, 40), -40)
+    setSwipeProgress(clampedProgress)
+
+    // Set swipe direction for visual feedback
+    setSwipeDirection(deltaX > 0 ? "right" : "left")
+  }
+
+  const handleTouchEnd = (e: TouchEvent) => {
+    if (!isMobile || !isSwiping.current) return
+
+    isSwiping.current = false
+
+    const deltaX = touchEndX.current - touchStartX.current
+    const timeDelta = Date.now() - touchStartTime.current
+    const velocity = Math.abs(deltaX) / timeDelta
+
+    // Reset swipe progress
+    setSwipeProgress(0)
+
+    // Check if swipe was fast or far enough to trigger navigation
+    if (Math.abs(deltaX) > SWIPE_THRESHOLD || velocity > VELOCITY_THRESHOLD) {
+      if (deltaX > 0 && canSwipeRight) {
+        navigateToRoute("right")
+      } else if (deltaX < 0 && canSwipeLeft) {
+        navigateToRoute("left")
+      }
+    } else {
+      // Reset direction if swipe wasn't completed
+      setSwipeDirection(null)
+    }
+  }
+
+  // Set up event listeners
   useEffect(() => {
-    updateSwipeAvailability()
-  }, [pathname, updateSwipeAvailability])
+    if (!isMobile) return
 
-  // Handle touch events for swipe navigation
-  useEffect(() => {
-    if (!isMobile || !touchSupported) return
-
-    const handleTouchStart = (e: TouchEvent) => {
-      // Store the initial touch position
-      touchStartX.current = e.touches[0].clientX
-      touchStartY.current = e.touches[0].clientY
-      isVerticalScroll.current = false
-    }
-
-    const handleTouchMove = (e: TouchEvent) => {
-      if (touchStartX.current === null || touchStartY.current === null) return
-
-      const touchX = e.touches[0].clientX
-      const touchY = e.touches[0].clientY
-
-      // Calculate horizontal and vertical distance moved
-      const deltaX = touchX - touchStartX.current
-      const deltaY = touchY - touchStartY.current
-
-      // If we've determined this is a vertical scroll, don't process as a swipe
-      if (isVerticalScroll.current) return
-
-      // If we haven't yet determined direction and the vertical movement is greater,
-      // mark this as a vertical scroll and exit
-      if (Math.abs(deltaY) > Math.abs(deltaX) * 1.5 && Math.abs(deltaY) > 10) {
-        isVerticalScroll.current = true
-        setState((prev) => ({ ...prev, swipeProgress: 0 }))
-        return
-      }
-
-      // Check if we can swipe in the attempted direction
-      if ((deltaX > 0 && !state.canSwipeRight) || (deltaX < 0 && !state.canSwipeLeft)) {
-        // Reduce the swipe distance to indicate resistance
-        currentSwipe.current = deltaX * 0.2
-      } else {
-        // Normal swipe
-        currentSwipe.current = deltaX
-      }
-
-      // Update the swipe progress
-      setState((prev) => ({
-        ...prev,
-        swipeProgress: currentSwipe.current,
-        swipeDirection: deltaX > 0 ? "right" : "left",
-      }))
-    }
-
-    const handleTouchEnd = () => {
-      if (touchStartX.current === null || isVerticalScroll.current) {
-        // Reset state
-        touchStartX.current = null
-        touchStartY.current = null
-        isVerticalScroll.current = false
-        setState((prev) => ({ ...prev, swipeProgress: 0 }))
-        return
-      }
-
-      // Determine if the swipe was significant enough to navigate
-      const swipeThreshold = window.innerWidth * 0.15 // 15% of screen width
-
-      if (Math.abs(currentSwipe.current) > swipeThreshold) {
-        // Determine direction and if we can navigate that way
-        const direction = currentSwipe.current > 0 ? "right" : "left"
-        const canNavigate = direction === "right" ? state.canSwipeRight : state.canSwipeLeft
-
-        if (canNavigate) {
-          // Set animating state
-          setState((prev) => ({ ...prev, isAnimating: true }))
-
-          // Provide haptic feedback if enabled
-          if (settings.enabled) {
-            haptic("medium")
-          }
-
-          // Navigate to the appropriate route
-          const currentIndex = routes.indexOf(pathname || "/")
-
-          if (currentIndex !== -1) {
-            const nextIndex = direction === "right" ? currentIndex - 1 : currentIndex + 1
-            if (nextIndex >= 0 && nextIndex < routes.length) {
-              router.push(routes[nextIndex])
-            }
-          } else if (direction === "right" && additionalRoutes.includes(pathname || "")) {
-            // If we're in an additional route and swiping right, go back
-            router.back()
-          }
-
-          // Reset animation state after a delay
-          if (animationTimeoutRef.current) {
-            clearTimeout(animationTimeoutRef.current)
-          }
-
-          animationTimeoutRef.current = setTimeout(() => {
-            setState((prev) => ({ ...prev, isAnimating: false, swipeProgress: 0 }))
-          }, 300)
-        } else {
-          // Can't navigate, reset swipe progress with animation
-          setState((prev) => ({
-            ...prev,
-            swipeProgress: 0,
-            isAnimating: false,
-          }))
-        }
-      } else {
-        // Swipe wasn't significant, reset
-        setState((prev) => ({ ...prev, swipeProgress: 0 }))
-      }
-
-      // Reset touch tracking
-      touchStartX.current = null
-      touchStartY.current = null
-      currentSwipe.current = 0
-    }
-
-    // Add event listeners
     document.addEventListener("touchstart", handleTouchStart, { passive: true })
     document.addEventListener("touchmove", handleTouchMove, { passive: true })
-    document.addEventListener("touchend", handleTouchEnd)
+    document.addEventListener("touchend", handleTouchEnd, { passive: true })
 
-    // Clean up
     return () => {
       document.removeEventListener("touchstart", handleTouchStart)
       document.removeEventListener("touchmove", handleTouchMove)
       document.removeEventListener("touchend", handleTouchEnd)
-
-      if (animationTimeoutRef.current) {
-        clearTimeout(animationTimeoutRef.current)
-      }
     }
-  }, [isMobile, touchSupported, router, pathname, state.canSwipeLeft, state.canSwipeRight, haptic, settings])
+  }, [isMobile, canSwipeLeft, canSwipeRight])
 
-  return state
+  return {
+    swipeProgress,
+    swipeDirection,
+    isAnimating,
+    canSwipeLeft,
+    canSwipeRight,
+  }
 }
