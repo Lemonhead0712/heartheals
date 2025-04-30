@@ -29,6 +29,9 @@ export default function AppStatusPage() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
   const [isCancelled, setIsCancelled] = useState(false)
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
+  const [isResetComplete, setIsResetComplete] = useState(false)
   const { tier, isActive } = useSubscription()
   const { triggerHaptic } = useHaptic()
 
@@ -48,6 +51,43 @@ export default function AppStatusPage() {
       // Reset state after dialog closes
       setTimeout(() => setIsCancelled(false), 300)
     }, 2000)
+  }
+
+  const handleResetApplication = async () => {
+    triggerHaptic("strong")
+    setIsResetting(true)
+
+    // Simulate clearing local storage and resetting app data
+    try {
+      // Clear all localStorage items
+      localStorage.clear()
+
+      // Reset IndexedDB if used
+      // This is a simplified example - actual implementation would depend on your storage strategy
+      const databases = await window.indexedDB.databases()
+      databases.forEach((db) => {
+        if (db.name) window.indexedDB.deleteDatabase(db.name)
+      })
+
+      // Wait for reset to complete
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+
+      setIsResetComplete(true)
+
+      // Close dialog after showing success message
+      setTimeout(() => {
+        setIsResetConfirmOpen(false)
+        // Reset state after dialog closes
+        setTimeout(() => {
+          setIsResetComplete(false)
+          // Reload the page to reflect reset state
+          window.location.reload()
+        }, 300)
+      }, 2000)
+    } catch (error) {
+      console.error("Error resetting application:", error)
+      setIsResetting(false)
+    }
   }
 
   // Animation variants
@@ -256,9 +296,82 @@ export default function AppStatusPage() {
                     <p className="text-sm text-muted-foreground mb-4">
                       This will clear all your saved preferences, entries, and local data. This action cannot be undone.
                     </p>
-                    <Button variant="destructive" className="w-full">
-                      Reset Application
-                    </Button>
+                    <Dialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="destructive" className="w-full" onClick={() => triggerHaptic("medium")}>
+                          Reset Application
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                          <DialogTitle className="flex items-center">
+                            <AlertTriangle className="h-5 w-5 text-amber-500 mr-2" />
+                            Reset Application?
+                          </DialogTitle>
+                          <DialogDescription>
+                            Are you sure you want to reset the application? This will clear all your data.
+                          </DialogDescription>
+                        </DialogHeader>
+
+                        {!isResetComplete ? (
+                          <>
+                            <div className="py-4">
+                              <div className="rounded-md bg-amber-50 p-4 mb-4">
+                                <div className="flex">
+                                  <div className="text-amber-800">
+                                    <p className="text-sm font-medium">What happens when you reset:</p>
+                                    <ul className="mt-2 text-sm list-disc pl-5 space-y-1">
+                                      <li>All your saved emotional logs will be deleted</li>
+                                      <li>Your breathing exercise history will be cleared</li>
+                                      <li>All app settings will return to defaults</li>
+                                      <li>Your subscription status will not be affected</li>
+                                    </ul>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <DialogFooter className="flex sm:justify-between">
+                              <Button type="button" variant="outline" onClick={() => setIsResetConfirmOpen(false)}>
+                                Cancel
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                onClick={handleResetApplication}
+                                disabled={isResetting}
+                              >
+                                {isResetting ? (
+                                  <>
+                                    <span className="animate-spin mr-2">⟳</span>
+                                    Resetting...
+                                  </>
+                                ) : (
+                                  "Yes, Reset Everything"
+                                )}
+                              </Button>
+                            </DialogFooter>
+                          </>
+                        ) : (
+                          <div className="py-6 text-center">
+                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 mb-4">
+                              <svg
+                                className="h-6 w-6 text-green-600"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                            <h3 className="text-lg font-medium text-gray-900">Reset Complete</h3>
+                            <p className="mt-2 text-sm text-gray-500">
+                              Your application has been reset successfully. The page will reload momentarily.
+                            </p>
+                          </div>
+                        )}
+                      </DialogContent>
+                    </Dialog>
                   </CardContent>
                 </Card>
               </TabsContent>
