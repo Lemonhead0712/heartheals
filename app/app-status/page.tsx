@@ -1,17 +1,19 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList } from "@/components/ui/tabs"
-import { ChevronLeft, AlertTriangle } from "lucide-react"
+import { ChevronLeft, AlertTriangle, RefreshCw } from "lucide-react"
 import { motion } from "framer-motion"
 import { Logo } from "@/components/logo"
 import { AppStatusDashboard } from "@/components/app-status-dashboard"
 import { HapticSettings } from "@/components/haptic-settings"
 import { PageContainer } from "@/components/page-container"
 import { HapticTabsTrigger } from "@/components/ui/haptic-tabs"
+import { Progress } from "@/components/ui/progress"
+import { SelectiveResetDialog } from "@/components/selective-reset-dialog"
 import {
   Dialog,
   DialogContent,
@@ -23,6 +25,7 @@ import {
 } from "@/components/ui/dialog"
 import { useSubscription } from "@/contexts/subscription-context"
 import { useHaptic } from "@/hooks/use-haptic"
+import { resetApplication, type ResetProgress } from "@/utils/reset-utils"
 
 export default function AppStatusPage() {
   const [activeTab, setActiveTab] = useState("dashboard")
@@ -31,12 +34,32 @@ export default function AppStatusPage() {
   const [isCancelled, setIsCancelled] = useState(false)
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
+  const [resetProgress, setResetProgress] = useState<ResetProgress>({
+    step: "",
+    progress: 0,
+    isComplete: false,
+  })
+  const [resetError, setResetError] = useState<string | null>(null)
   const [isResetComplete, setIsResetComplete] = useState(false)
   const { tier, isActive } = useSubscription()
-  const { triggerHaptic } = useHaptic()
+  const { haptic, patternHaptic } = useHaptic()
+
+  // Reset the progress state when dialog closes
+  useEffect(() => {
+    if (!isResetConfirmOpen) {
+      setTimeout(() => {
+        setResetProgress({
+          step: "",
+          progress: 0,
+          isComplete: false,
+        })
+        setResetError(null)
+      }, 300)
+    }
+  }, [isResetConfirmOpen])
 
   const handleCancelSubscription = async () => {
-    triggerHaptic("medium")
+    haptic("medium")
     setIsCancelling(true)
 
     // Simulate API call to cancel subscription
@@ -54,39 +77,48 @@ export default function AppStatusPage() {
   }
 
   const handleResetApplication = async () => {
-    triggerHaptic("strong")
     setIsResetting(true)
+    setResetError(null)
+    patternHaptic("warning")
 
-    // Simulate clearing local storage and resetting app data
     try {
-      // Clear all localStorage items
-      localStorage.clear()
+      const result = await resetApplication((progress) => {
+        setResetProgress(progress)
 
-      // Reset IndexedDB if used
-      // This is a simplified example - actual implementation would depend on your storage strategy
-      const databases = await window.indexedDB.databases()
-      databases.forEach((db) => {
-        if (db.name) window.indexedDB.deleteDatabase(db.name)
+        // Provide haptic feedback at key points
+        if (progress.progress === 100) {
+          patternHaptic("success")
+        } else if (progress.progress % 25 === 0) {
+          haptic("light")
+        }
       })
 
-      // Wait for reset to complete
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      if (result.success) {
+        setIsResetComplete(true)
 
-      setIsResetComplete(true)
-
-      // Close dialog after showing success message
-      setTimeout(() => {
-        setIsResetConfirmOpen(false)
-        // Reset state after dialog closes
+        // Close dialog after showing success message
         setTimeout(() => {
-          setIsResetComplete(false)
-          // Reload the page to reflect reset state
-          window.location.reload()
-        }, 300)
-      }, 2000)
+          setIsResetConfirmOpen(false)
+
+          // Reset state after dialog closes
+          setTimeout(() => {
+            setIsResetting(false)
+            setIsResetComplete(false)
+
+            // Reload the page to reflect reset state
+            window.location.reload()
+          }, 300)
+        }, 2000)
+      } else {
+        setResetError(result.error || "An unknown error occurred")
+        setIsResetting(false)
+        patternHaptic("error")
+      }
     } catch (error) {
       console.error("Error resetting application:", error)
+      setResetError("An unexpected error occurred. Please try again.")
       setIsResetting(false)
+      patternHaptic("error")
     }
   }
 
@@ -199,7 +231,7 @@ export default function AppStatusPage() {
                             variant="destructive"
                             className="w-full"
                             disabled={!(tier === "premium" && isActive)}
-                            onClick={() => triggerHaptic("light")}
+                            onClick={() => haptic("light")}
                           >
                             Cancel Subscription
                           </Button>
@@ -298,7 +330,18 @@ export default function AppStatusPage() {
                     </p>
                     <Dialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
                       <DialogTrigger asChild>
-                        <Button variant="destructive" className="w-full" onClick={() => triggerHaptic("medium")}>
+                        <Button
+                          variant="destructive"
+                          className="w-full"
+                          onClick={() => {
+                            haptic("medium")
+                            setResetProgress({
+                              step: "",
+                              progress: 0,
+                              isComplete: false,
+                            })
+                          }}
+                        >
                           Reset Application
                         </Button>
                       </DialogTrigger>
@@ -325,14 +368,38 @@ export default function AppStatusPage() {
                                       <li>Your breathing exercise history will be cleared</li>
                                       <li>All app settings will return to defaults</li>
                                       <li>Your subscription status will not be affected</li>
+                                      <li>All cached data will be cleared</li>
                                     </ul>
                                   </div>
                                 </div>
                               </div>
+
+                              {isResetting && (
+                                <div className="mt-4 space-y-2">
+                                  <div className="flex justify-between text-sm">
+                                    <span>{resetProgress.step}</span>
+                                    <span>{resetProgress.progress}%</span>
+                                  </div>
+                                  <Progress value={resetProgress.progress} className="h-2" />
+                                </div>
+                              )}
+
+                              {resetError && (
+                                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
+                                  <p className="font-medium">Error during reset:</p>
+                                  <p>{resetError}</p>
+                                  <p className="mt-1">Please try again or contact support if the issue persists.</p>
+                                </div>
+                              )}
                             </div>
 
                             <DialogFooter className="flex sm:justify-between">
-                              <Button type="button" variant="outline" onClick={() => setIsResetConfirmOpen(false)}>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsResetConfirmOpen(false)}
+                                disabled={isResetting}
+                              >
                                 Cancel
                               </Button>
                               <Button
@@ -343,7 +410,7 @@ export default function AppStatusPage() {
                               >
                                 {isResetting ? (
                                   <>
-                                    <span className="animate-spin mr-2">⟳</span>
+                                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                                     Resetting...
                                   </>
                                 ) : (
@@ -372,6 +439,9 @@ export default function AppStatusPage() {
                         )}
                       </DialogContent>
                     </Dialog>
+
+                    {/* Selective Reset Option */}
+                    <SelectiveResetDialog onComplete={() => window.location.reload()} />
                   </CardContent>
                 </Card>
               </TabsContent>
