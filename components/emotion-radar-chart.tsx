@@ -18,32 +18,42 @@ export function EmotionRadarChart({
   description = "Distribution of your emotions by intensity",
   className = "",
 }: EmotionRadarChartProps) {
-  // Process data for radar chart
+  // Process data for radar chart with error handling
   const chartData = useMemo(() => {
-    if (!entries || entries.length === 0) return []
+    try {
+      if (!entries || !Array.isArray(entries) || entries.length === 0) return []
 
-    // Group by emotion and calculate average intensity
-    const emotionMap = new Map<string, { count: number; totalIntensity: number }>()
+      // Group by emotion and calculate average intensity
+      const emotionMap = new Map<string, { count: number; totalIntensity: number }>()
 
-    entries.forEach((entry) => {
-      if (!emotionMap.has(entry.emotion)) {
-        emotionMap.set(entry.emotion, { count: 0, totalIntensity: 0 })
-      }
+      entries.forEach((entry) => {
+        if (!entry || typeof entry !== "object") return
 
-      const data = emotionMap.get(entry.emotion)!
-      data.count += 1
-      data.totalIntensity += entry.intensity
-    })
+        const emotion = entry.emotion || "Unknown"
+        const intensity = typeof entry.intensity === "number" ? entry.intensity : 5 // Default to middle intensity
 
-    // Take top emotions (up to 8) to avoid overcrowding the chart
-    return Array.from(emotionMap.entries())
-      .map(([emotion, data]) => ({
-        emotion,
-        intensity: Math.round((data.totalIntensity / data.count) * 10) / 10,
-        count: data.count,
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 8)
+        if (!emotionMap.has(emotion)) {
+          emotionMap.set(emotion, { count: 0, totalIntensity: 0 })
+        }
+
+        const data = emotionMap.get(emotion)!
+        data.count += 1
+        data.totalIntensity += intensity
+      })
+
+      // Take top emotions (up to 8) to avoid overcrowding the chart
+      return Array.from(emotionMap.entries())
+        .map(([emotion, data]) => ({
+          emotion,
+          intensity: Math.round((data.totalIntensity / data.count) * 10) / 10,
+          count: data.count,
+        }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 8)
+    } catch (error) {
+      console.error("Error processing radar chart data:", error)
+      return []
+    }
   }, [entries])
 
   // Generate colors for the radar areas
@@ -55,12 +65,17 @@ export function EmotionRadarChart({
     }
   }
 
-  // Custom tooltip formatter
+  // Custom tooltip formatter with error handling
   const tooltipFormatter = (value: number, name: string, props: any) => {
-    if (name === "intensity") {
-      return [`${value}/10`, "Avg. Intensity"]
+    try {
+      if (name === "intensity") {
+        return [`${value}/10`, "Avg. Intensity"]
+      }
+      return [value, name]
+    } catch (error) {
+      console.error("Error formatting tooltip:", error)
+      return [value, name] // Return default format on error
     }
-    return [value, name]
   }
 
   return (

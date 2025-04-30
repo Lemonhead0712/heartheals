@@ -18,8 +18,8 @@ import {
   Legend,
 } from "recharts"
 import { ChevronLeft, AlertCircle, BarChart3, PieChartIcon } from "lucide-react"
-import { formatDate } from "@/utils/date-utils"
 import type { EmotionEntry } from "@/utils/emotion-analytics"
+import { safeFormatDate } from "@/utils/safe-date-utils"
 
 interface DailyEmotionBreakdownProps {
   date: string
@@ -31,11 +31,7 @@ export function DailyEmotionBreakdown({ date, entries, onClose }: DailyEmotionBr
   const [visualizationType, setVisualizationType] = useState<"pie" | "bar">("pie")
 
   const formattedDate = useMemo(() => {
-    try {
-      return formatDate(date, { weekday: "long", month: "long", day: "numeric" })
-    } catch {
-      return date
-    }
+    return safeFormatDate(date, { weekday: "long", month: "long", day: "numeric" }, date)
   }, [date])
 
   // Process data for charts

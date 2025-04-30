@@ -40,6 +40,7 @@ import { formatRelativeTime, getDateRangeForPeriod, formatDateRange } from "@/ut
 import { useRealTimeUpdate } from "@/hooks/use-real-time-update"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { InteractiveEmotionPatterns } from "./interactive-emotion-patterns"
+import { ErrorBoundary } from "./error-boundary"
 
 // Custom scatter dot component with animation
 const CustomScatterDot = (props: any) => {
@@ -639,7 +640,7 @@ export function EnhancedEmotionalAnalytics({
                               <div className="flex items-center justify-center mt-2 text-xs gap-4">
                                 <div className="flex items-center">
                                   <div className="w-3 h-3 bg-pink-500 rounded-full mr-1"></div>
-                                  <span classNameName="text-pink-700 font-medium">Intensity</span>
+                                  <span className="text-pink-700 font-medium">Intensity</span>
                                 </div>
                                 <div className="flex items-center">
                                   <div
@@ -672,7 +673,9 @@ export function EnhancedEmotionalAnalytics({
 
               {/* NEW: Patterns Tab - Interactive Calendar and Visualizations */}
               <TabsContent value="patterns" className="mt-0">
-                <InteractiveEmotionPatterns entries={filteredData} />
+                <ErrorBoundary>
+                  <InteractiveEmotionPatterns entries={filteredData} />
+                </ErrorBoundary>
               </TabsContent>
 
               {/* Distribution Tab */}

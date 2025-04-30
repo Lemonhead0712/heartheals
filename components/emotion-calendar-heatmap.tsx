@@ -57,49 +57,54 @@ export function EmotionCalendarHeatmap({ entries, onSelectDate, className = "" }
     // Create array for all days to display
     const days = []
 
-    // Add days from previous month
-    const prevMonth = new Date(year, month, 0)
-    const prevMonthLastDay = prevMonth.getDate()
+    try {
+      // Add days from previous month
+      const prevMonth = new Date(year, month, 0)
+      const prevMonthLastDay = prevMonth.getDate()
 
-    for (let i = prevMonthLastDay - daysFromPrevMonth + 1; i <= prevMonthLastDay; i++) {
-      const date = new Date(year, month - 1, i)
-      const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+      for (let i = prevMonthLastDay - daysFromPrevMonth + 1; i <= prevMonthLastDay; i++) {
+        const date = new Date(year, month - 1, i)
+        const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
 
-      days.push({
-        date,
-        dateKey,
-        isCurrentMonth: false,
-        entries: entriesByDate[dateKey] || [],
-      })
-    }
+        days.push({
+          date,
+          dateKey,
+          isCurrentMonth: false,
+          entries: entriesByDate[dateKey] || [],
+        })
+      }
 
-    // Add days from current month
-    for (let i = 1; i <= lastDay.getDate(); i++) {
-      const date = new Date(year, month, i)
-      const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+      // Add days from current month
+      for (let i = 1; i <= lastDay.getDate(); i++) {
+        const date = new Date(year, month, i)
+        const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
 
-      days.push({
-        date,
-        dateKey,
-        isCurrentMonth: true,
-        entries: entriesByDate[dateKey] || [],
-      })
-    }
+        days.push({
+          date,
+          dateKey,
+          isCurrentMonth: true,
+          entries: entriesByDate[dateKey] || [],
+        })
+      }
 
-    // Fill in days from next month to complete the grid
-    const totalDaysToShow = Math.ceil(days.length / 7) * 7
-    const daysToAdd = totalDaysToShow - days.length
+      // Fill in days from next month to complete the grid
+      const totalDaysToShow = Math.ceil(days.length / 7) * 7
+      const daysToAdd = totalDaysToShow - days.length
 
-    for (let i = 1; i <= daysToAdd; i++) {
-      const date = new Date(year, month + 1, i)
-      const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+      for (let i = 1; i <= daysToAdd; i++) {
+        const date = new Date(year, month + 1, i)
+        const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
 
-      days.push({
-        date,
-        dateKey,
-        isCurrentMonth: false,
-        entries: entriesByDate[dateKey] || [],
-      })
+        days.push({
+          date,
+          dateKey,
+          isCurrentMonth: false,
+          entries: entriesByDate[dateKey] || [],
+        })
+      }
+    } catch (error) {
+      console.error("Error generating calendar days:", error)
+      return [] // Return empty array on error
     }
 
     return days
@@ -139,43 +144,50 @@ export function EmotionCalendarHeatmap({ entries, onSelectDate, className = "" }
     return Math.round((totalIntensity / dayEntries.length) * 10) / 10
   }
 
-  // Get color for emotion
+  // Get color for emotion with error handling
   const getEmotionColor = (emotion: string) => {
-    // Basic emotion colors
-    const colors: Record<string, string> = {
-      Joy: "#4CAF50",
-      Happy: "#4CAF50",
-      Sad: "#9C27B0",
-      Sadness: "#9C27B0",
-      Anger: "#F44336",
-      Angry: "#F44336",
-      Fear: "#795548",
-      Anxious: "#FFC107",
-      Anxiety: "#FFC107",
-      Calm: "#2196F3",
-      Surprise: "#607D8B",
-      Trust: "#00BCD4",
-      Anticipation: "#FF9800",
-      Disgust: "#795548",
-    }
+    try {
+      if (!emotion) return "#cccccc" // Default gray for undefined emotions
 
-    // Check for exact match or partial match
-    const normalizedEmotion = emotion.toLowerCase()
-
-    if (colors[emotion]) {
-      return colors[emotion]
-    }
-
-    for (const [key, value] of Object.entries(colors)) {
-      if (normalizedEmotion.includes(key.toLowerCase()) || key.toLowerCase().includes(normalizedEmotion)) {
-        return value
+      // Basic emotion colors
+      const colors: Record<string, string> = {
+        Joy: "#4CAF50",
+        Happy: "#4CAF50",
+        Sad: "#9C27B0",
+        Sadness: "#9C27B0",
+        Anger: "#F44336",
+        Angry: "#F44336",
+        Fear: "#795548",
+        Anxious: "#FFC107",
+        Anxiety: "#FFC107",
+        Calm: "#2196F3",
+        Surprise: "#607D8B",
+        Trust: "#00BCD4",
+        Anticipation: "#FF9800",
+        Disgust: "#795548",
       }
-    }
 
-    // Generate a color based on the emotion string
-    const hash = Array.from(normalizedEmotion).reduce((acc, char) => char.charCodeAt(0) + ((acc << 5) - acc), 0)
-    const h = Math.abs(hash) % 360
-    return `hsl(${h}, 70%, 50%)`
+      // Check for exact match or partial match
+      const normalizedEmotion = emotion.toLowerCase()
+
+      if (colors[emotion]) {
+        return colors[emotion]
+      }
+
+      for (const [key, value] of Object.entries(colors)) {
+        if (normalizedEmotion.includes(key.toLowerCase()) || key.toLowerCase().includes(normalizedEmotion)) {
+          return value
+        }
+      }
+
+      // Generate a color based on the emotion string
+      const hash = Array.from(normalizedEmotion).reduce((acc, char) => char.charCodeAt(0) + ((acc << 5) - acc), 0)
+      const h = Math.abs(hash) % 360
+      return `hsl(${h}, 70%, 50%)`
+    } catch (error) {
+      console.error("Error getting emotion color:", error)
+      return "#cccccc" // Default gray on error
+    }
   }
 
   // Get a visual representation of intensity
@@ -203,10 +215,14 @@ export function EmotionCalendarHeatmap({ entries, onSelectDate, className = "" }
     setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1))
   }
 
-  // Handle day click
+  // Handle day click with safety checks
   const handleDayClick = (day: any) => {
-    if (day.entries.length > 0 && onSelectDate) {
-      onSelectDate(day.dateKey, day.entries)
+    try {
+      if (day && day.entries && day.entries.length > 0 && onSelectDate && day.dateKey) {
+        onSelectDate(day.dateKey, day.entries)
+      }
+    } catch (error) {
+      console.error("Error handling day click:", error)
     }
   }
 
