@@ -4,7 +4,7 @@ import type React from "react"
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, BookHeart, Wind, BarChart3, CreditCard, Activity } from "lucide-react"
+import { Home, BookHeart, Wind, BarChart3, CreditCard, Activity, HelpCircle, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useHapticContext } from "@/contexts/haptic-context"
 import { Logo } from "./logo"
@@ -62,10 +62,38 @@ export function BottomNav() {
   return (
     <>
       {/* Mobile Logo Bar - Only visible on mobile */}
-      <div className="fixed top-0 left-0 z-50 w-full bg-white/90 backdrop-blur-md shadow-sm md:hidden">
-        <div className="flex justify-center py-2">
+      <div className="fixed top-0 left-0 z-50 w-full bg-white/95 backdrop-blur-md shadow-sm md:hidden">
+        <div className="flex justify-between items-center px-4 py-2.5">
+          <Link
+            href="/about"
+            onClick={(e) => handleNavClick("/about", e)}
+            className={cn(
+              "flex items-center space-x-1 px-2 py-1.5 rounded-md text-sm font-medium transition-colors",
+              pathname === "/about"
+                ? "text-purple-700 bg-purple-50"
+                : "text-gray-600 hover:text-purple-600 hover:bg-purple-50/50",
+            )}
+          >
+            <Info className="w-4 h-4" />
+            <span>About</span>
+          </Link>
+
           <Link href="/" onClick={(e) => handleNavClick("/", e)}>
             <Logo size="small" showText={true} className="py-1" />
+          </Link>
+
+          <Link
+            href="/faq"
+            onClick={(e) => handleNavClick("/faq", e)}
+            className={cn(
+              "flex items-center space-x-1 px-2 py-1.5 rounded-md text-sm font-medium transition-colors",
+              pathname === "/faq"
+                ? "text-purple-700 bg-purple-50"
+                : "text-gray-600 hover:text-purple-600 hover:bg-purple-50/50",
+            )}
+          >
+            <HelpCircle className="w-4 h-4" />
+            <span>FAQ</span>
           </Link>
         </div>
       </div>
@@ -83,7 +111,7 @@ export function BottomNav() {
                 onClick={(e) => handleNavClick(item.href, e)}
                 className={cn(
                   "flex flex-col items-center justify-center gap-1 text-xs font-medium transition-colors",
-                  isActive ? "text-primary" : "text-muted-foreground hover:text-primary",
+                  isActive ? "text-purple-700" : "text-muted-foreground hover:text-purple-600",
                   "active:bg-gray-100 touch-manipulation", // Add active state and touch optimization
                   item.name === "Status" && !isActive && "text-purple-500/70", // Special styling for status icon
                 )}
@@ -93,13 +121,13 @@ export function BottomNav() {
                     size="sm"
                     isActive={isActive}
                     tooltipText="App Status"
-                    className={isActive ? "text-primary" : undefined}
+                    className={isActive ? "text-purple-700" : undefined}
                   />
                 ) : (
                   <item.icon
                     className={cn(
                       "h-5 w-5 transition-transform",
-                      isActive ? "text-primary" : "text-muted-foreground",
+                      isActive ? "text-purple-700" : "text-muted-foreground",
                       isActive && "scale-110", // Slightly enlarge active icon
                     )}
                   />
