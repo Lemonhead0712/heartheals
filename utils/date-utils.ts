@@ -123,6 +123,23 @@ export function getCurrentDateString(): string {
 }
 
 /**
+ * Format a date with customizable options
+ */
+export function formatDate(date: Date | string, options: Intl.DateTimeFormatOptions = {}): string {
+  const targetDate = typeof date === "string" ? new Date(date) : date
+
+  // Default options if none provided
+  const defaultOptions: Intl.DateTimeFormatOptions = {
+    month: "short",
+    day: "numeric",
+    year: new Date().getFullYear() !== targetDate.getFullYear() ? "numeric" : undefined,
+    ...options,
+  }
+
+  return targetDate.toLocaleDateString(undefined, defaultOptions)
+}
+
+/**
  * Calculate the time elapsed since a given date in a human-readable format
  */
 export function getTimeElapsedSince(date: Date | string): string {

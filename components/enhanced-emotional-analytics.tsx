@@ -18,6 +18,9 @@ import {
   ReferenceLine,
   Legend,
   Scatter,
+  Cell,
+  PieChart,
+  Pie,
 } from "recharts"
 import { processEmotionData, type EmotionEntry } from "@/utils/emotion-analytics"
 import { LoadingSpinner } from "./ui/loading-spinner"
@@ -36,11 +39,14 @@ import {
   Lightbulb,
   Info,
   RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  Activity,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { EmotionChartTooltip } from "./emotion-chart-tooltip"
 import { ResponsiveEmotionPieChart } from "./responsive-emotion-pie-chart"
-import { formatRelativeTime, getDateRangeForPeriod, formatDateRange } from "@/utils/date-utils"
+import { formatRelativeTime, getDateRangeForPeriod, formatDateRange, formatDate } from "@/utils/date-utils"
 import { useRealTimeUpdate } from "@/hooks/use-real-time-update"
 import { useMediaQuery } from "@/hooks/use-media-query"
 
@@ -132,6 +138,8 @@ export function EnhancedEmotionalAnalytics({
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
   const [highlightedDay, setHighlightedDay] = useState<string | null>(null)
+  const [showDailyBreakdown, setShowDailyBreakdown] = useState(false)
+  const [selectedDay, setSelectedDay] = useState<string | null>(null)
 
   // Detect screen size for responsive design
   const isMobile = useMediaQuery("(max-width: 640px)")
@@ -214,52 +222,65 @@ export function EnhancedEmotionalAnalytics({
     })
   }, [analytics.intensityOverTime])
 
-  // Group entries by day and emotion for stacked chart
-  const dailyEmotionGroups = useMemo(() => {
+  // Group entries by day for daily emotion breakdown
+  const dailyEmotionData = useMemo(() => {
     if (!filteredData || filteredData.length === 0) return []
 
-    const dayMap = new Map()
+    // Group entries by date (YYYY-MM-DD format)
+    const entriesByDate = filteredData.reduce(
+      (acc, entry) => {
+        const date = new Date(entry.timestamp)
+        const dateKey = date.toISOString().split("T")[0]
 
-    filteredData.forEach((entry) => {
-      const date = new Date(entry.timestamp)
-      const day = date.toLocaleDateString("en-US", { weekday: "short" })
-
-      if (!dayMap.has(day)) {
-        dayMap.set(day, {
-          day,
-          totalIntensity: 0,
-          count: 0,
-          emotions: {},
-        })
-      }
-
-      const dayData = dayMap.get(day)
-      dayData.totalIntensity += entry.intensity
-      dayData.count += 1
-
-      if (!dayData.emotions[entry.emotion]) {
-        dayData.emotions[entry.emotion] = {
-          count: 0,
-          totalIntensity: 0,
+        if (!acc[dateKey]) {
+          acc[dateKey] = {
+            date: date,
+            dateStr: dateKey,
+            displayDate: formatDate(date, { weekday: "short", month: "short", day: "numeric" }),
+            entries: [],
+            emotions: {},
+          }
         }
-      }
 
-      dayData.emotions[entry.emotion].count += 1
-      dayData.emotions[entry.emotion].totalIntensity += entry.intensity
-    })
+        acc[dateKey].entries.push(entry)
 
-    // Process the map into an array for the chart
-    return Array.from(dayMap.values()).map((dayData) => {
-      const result: any = { day: dayData.day }
+        // Count emotions
+        if (!acc[dateKey].emotions[entry.emotion]) {
+          acc[dateKey].emotions[entry.emotion] = {
+            count: 0,
+            totalIntensity: 0,
+            color: getEmotionColor(entry.emotion),
+          }
+        }
 
-      // Add average intensity for each emotion
-      Object.entries(dayData.emotions).forEach(([emotion, data]: [string, any]) => {
-        result[emotion] = Math.round((data.totalIntensity / data.count) * 10) / 10
-      })
+        acc[dateKey].emotions[entry.emotion].count += 1
+        acc[dateKey].emotions[entry.emotion].totalIntensity += entry.intensity
 
-      return result
-    })
+        return acc
+      },
+      {} as Record<string, any>,
+    )
+
+    // Convert to array and sort by date (most recent first)
+    return Object.values(entriesByDate).sort(
+      (a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    )
   }, [filteredData])
+
+  // Prepare data for the selected day's emotion breakdown
+  const selectedDayData = useMemo(() => {
+    if (!selectedDay || !dailyEmotionData) return null
+
+    const dayData = dailyEmotionData.find((day: any) => day.dateStr === selectedDay)
+    if (!dayData) return null
+
+    // Format data for pie chart
+    return Object.entries(dayData.emotions).map(([emotion, data]: [string, any]) => ({
+      name: emotion,
+      value: data.count,
+      color: data.color,
+    }))
+  }, [selectedDay, dailyEmotionData])
 
   // Generate correlation data between survey answers and emotions
   const surveyCorrelations = useMemo(() => {
@@ -446,6 +467,20 @@ export function EnhancedEmotionalAnalytics({
   // Toggle detailed emotion view
   const toggleEmotionDetails = () => {
     setShowEmotionDetails(!showEmotionDetails)
+  }
+
+  // Toggle daily breakdown view
+  const toggleDailyBreakdown = () => {
+    setShowDailyBreakdown(!showDailyBreakdown)
+  }
+
+  // Handle day selection for detailed view
+  const handleDaySelect = (dateStr: string) => {
+    if (selectedDay === dateStr) {
+      setSelectedDay(null)
+    } else {
+      setSelectedDay(dateStr)
+    }
   }
 
   // Get date range text
@@ -840,43 +875,172 @@ export function EnhancedEmotionalAnalytics({
                       </div>
                     )}
 
-                    {/* Additional weekly trend visualization */}
-                    {dailyEmotionGroups.length > 1 && (
-                      <div className="mt-6">
-                        <h4 className="text-sm font-medium text-pink-700 mb-2">Emotional Composition by Day</h4>
-                        <div className="h-[200px] w-full bg-white rounded-lg border border-pink-100 shadow-sm p-2">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={dailyEmotionGroups} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
-                              <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                              <XAxis
-                                dataKey="day"
-                                tick={{ fontSize: 11, fill: "#9f1239" }}
-                                axisLine={{ stroke: "#f9a8d4" }}
-                              />
-                              <YAxis tick={{ fontSize: 11, fill: "#9f1239" }} axisLine={{ stroke: "#f9a8d4" }} />
-                              <Tooltip
-                                wrapperStyle={{ outline: "none" }}
-                                contentStyle={{
-                                  borderRadius: "4px",
-                                  border: "1px solid #f9a8d4",
-                                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
-                                }}
-                              />
-                              <Legend wrapperStyle={{ paddingTop: "10px" }} iconType="circle" iconSize={8} />
-                              {analytics.emotionDistribution.slice(0, 5).map((item, index) => (
-                                <Bar
-                                  key={item.name}
-                                  dataKey={item.name}
-                                  stackId="a"
-                                  fill={item.color}
-                                  shape={(props) => <CustomBar {...props} fill={item.color} />}
-                                />
-                              ))}
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
+                    {/* REDESIGNED: Daily Emotion Breakdown Section */}
+                    <div className="mt-6">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-medium text-pink-700 flex items-center">
+                          <Activity className="h-4 w-4 mr-1.5" />
+                          Daily Emotion Breakdown
+                        </h4>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={toggleDailyBreakdown}
+                          className="h-8 text-xs text-pink-600 hover:text-pink-700"
+                        >
+                          {showDailyBreakdown ? (
+                            <>
+                              <ChevronUp className="h-4 w-4 mr-1" />
+                              Hide Details
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="h-4 w-4 mr-1" />
+                              Show Details
+                            </>
+                          )}
+                        </Button>
                       </div>
-                    )}
+
+                      {showDailyBreakdown && (
+                        <div className="bg-white rounded-lg border border-pink-100 shadow-sm p-3 space-y-3">
+                          <p className="text-xs text-pink-600">
+                            Select a day to see a breakdown of emotions recorded on that day.
+                          </p>
+
+                          {/* Day selection cards */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                            {dailyEmotionData.slice(0, 6).map((day: any, index: number) => {
+                              // Calculate total entries for this day
+                              const totalEntries = Object.values(day.emotions).reduce(
+                                (sum: number, emotion: any) => sum + emotion.count,
+                                0,
+                              )
+
+                              // Get top emotion for this day
+                              const topEmotion = Object.entries(day.emotions).sort(
+                                (a: any, b: any) => b[1].count - a[1].count,
+                              )[0]
+
+                              const isSelected = selectedDay === day.dateStr
+
+                              return (
+                                <div
+                                  key={day.dateStr}
+                                  className={`
+                                    p-2 rounded-md cursor-pointer transition-all duration-200
+                                    ${
+                                      isSelected
+                                        ? "bg-pink-100 border-pink-300 shadow-sm"
+                                        : "bg-pink-50 border-pink-100 hover:bg-pink-100"
+                                    }
+                                    border
+                                  `}
+                                  onClick={() => handleDaySelect(day.dateStr)}
+                                >
+                                  <div className="flex justify-between items-center">
+                                    <p className="text-xs font-medium text-pink-800">{day.displayDate}</p>
+                                    <Badge className="bg-pink-200 text-pink-800 text-[10px]">
+                                      {totalEntries} {totalEntries === 1 ? "entry" : "entries"}
+                                    </Badge>
+                                  </div>
+                                  {topEmotion && (
+                                    <div className="flex items-center mt-1">
+                                      <div
+                                        className="w-2 h-2 rounded-full mr-1"
+                                        style={{ backgroundColor: topEmotion[1].color }}
+                                      ></div>
+                                      <p className="text-xs text-pink-600 truncate">
+                                        Top: {topEmotion[0]} ({topEmotion[1].count})
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+
+                          {/* Selected day detail view */}
+                          {selectedDay && selectedDayData && (
+                            <div className="mt-4 p-3 bg-pink-50 rounded-lg border border-pink-200">
+                              <h5 className="text-sm font-medium text-pink-800 mb-2">
+                                {dailyEmotionData.find((d: any) => d.dateStr === selectedDay)?.displayDate} Breakdown
+                              </h5>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Pie chart for selected day */}
+                                <div className="h-[180px]">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                      <Pie
+                                        data={selectedDayData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={40}
+                                        outerRadius={70}
+                                        paddingAngle={2}
+                                        dataKey="value"
+                                        nameKey="name"
+                                        label={(entry) => entry.name}
+                                        labelLine={false}
+                                      >
+                                        {selectedDayData.map((entry, index) => (
+                                          <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                      </Pie>
+                                      <Tooltip
+                                        formatter={(value, name) => [`${value} entries`, name]}
+                                        contentStyle={{
+                                          borderRadius: "4px",
+                                          border: "1px solid #f9a8d4",
+                                          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
+                                        }}
+                                      />
+                                    </PieChart>
+                                  </ResponsiveContainer>
+                                </div>
+
+                                {/* Emotion list for selected day */}
+                                <div className="overflow-y-auto max-h-[180px] pr-1">
+                                  <table className="min-w-full text-xs">
+                                    <thead className="bg-pink-100">
+                                      <tr>
+                                        <th className="px-2 py-1 text-left text-pink-800">Emotion</th>
+                                        <th className="px-2 py-1 text-left text-pink-800">Count</th>
+                                        <th className="px-2 py-1 text-left text-pink-800">Avg. Intensity</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-pink-100">
+                                      {Object.entries(
+                                        dailyEmotionData.find((d: any) => d.dateStr === selectedDay)?.emotions || {},
+                                      )
+                                        .sort(([, a]: [string, any], [, b]: [string, any]) => b.count - a.count)
+                                        .map(([emotion, data]: [string, any], idx) => (
+                                          <tr key={idx} className="hover:bg-pink-50">
+                                            <td className="px-2 py-1">
+                                              <div className="flex items-center">
+                                                <div
+                                                  className="w-2 h-2 rounded-full mr-1.5"
+                                                  style={{ backgroundColor: data.color }}
+                                                ></div>
+                                                <span>{emotion}</span>
+                                              </div>
+                                            </td>
+                                            <td className="px-2 py-1">{data.count}</td>
+                                            <td className="px-2 py-1">
+                                              {Math.round((data.totalIntensity / data.count) * 10) / 10}/10
+                                            </td>
+                                          </tr>
+                                        ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="text-center py-8 text-pink-600 bg-pink-50 rounded-lg">
