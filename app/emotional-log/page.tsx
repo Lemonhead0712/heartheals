@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ChevronLeft, Plus, Save, Trash2, AlertCircle, RefreshCw, Clock } from "lucide-react"
+import { ChevronLeft, Plus, Save, AlertCircle, RefreshCw, Clock, Calendar } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Logo } from "@/components/logo"
 import { BottomNav } from "@/components/bottom-nav"
@@ -24,6 +24,7 @@ import { EmotionalSurvey } from "@/components/emotional-survey"
 import { EnhancedEmotionalAnalytics } from "@/components/enhanced-emotional-analytics"
 import { formatRelativeTime } from "@/utils/date-utils"
 import { useRealTimeUpdate } from "@/hooks/use-real-time-update"
+import { DailyEmotionFolder } from "@/components/daily-emotion-folder"
 
 export default function EmotionalLogPage() {
   return (
@@ -62,6 +63,22 @@ function EmotionalLog() {
     "Calm",
     "Anxious",
   ]
+
+  // Group entries by date
+  const groupedEntries = emotionLogs.reduce((groups: Record<string, any[]>, entry) => {
+    // Get the date part only (without time)
+    const date = new Date(entry.timestamp).toISOString().split("T")[0]
+
+    if (!groups[date]) {
+      groups[date] = []
+    }
+
+    groups[date].push(entry)
+    return groups
+  }, {})
+
+  // Sort dates in descending order (newest first)
+  const sortedDates = Object.keys(groupedEntries).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
 
   // Handle manual refresh
   const handleRefresh = () => {
@@ -298,7 +315,10 @@ function EmotionalLog() {
 
           <motion.div className="space-y-4" variants={item}>
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-semibold text-pink-800">Your Emotional Journey</h2>
+              <div className="flex items-center">
+                <Calendar className="h-5 w-5 text-pink-700 mr-2" />
+                <h2 className="text-2xl font-semibold text-pink-800">Your Emotional Journey</h2>
+              </div>
               <span className="text-xs text-pink-500">Last updated: {formatRelativeTime(lastUpdated)}</span>
             </div>
 
@@ -313,59 +333,16 @@ function EmotionalLog() {
                     No entries yet. Start tracking your emotions above.
                   </Card>
                 ) : (
-                  emotionLogs &&
-                  emotionLogs.map((entry) => (
-                    <motion.div
-                      key={entry.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.5 }}
-                    >
-                      <Card className="border-pink-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
-                        <CardContent className="pt-6 relative">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="absolute top-2 right-2 h-8 w-8 p-0 text-pink-400 hover:text-pink-700 hover:bg-pink-100"
-                            onClick={() => handleDelete(entry.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">Delete</span>
-                          </Button>
-                          <div className="flex justify-between items-start mb-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-3xl" role="img" aria-label={entry.emotion}>
-                                {entry.emoji}
-                              </span>
-                              <div>
-                                <h3 className="text-xl font-medium text-pink-800">{entry.emotion}</h3>
-                                <p className="text-sm text-pink-600">{formatRelativeTime(new Date(entry.timestamp))}</p>
-                              </div>
-                            </div>
-                            <div className="bg-pink-100 text-pink-800 px-2 py-1 rounded-full text-sm">
-                              Intensity: {entry.intensity}/10
-                            </div>
-                          </div>
-                          {entry.notes && <p className="mt-4 text-pink-700 bg-pink-50 p-4 rounded-md">{entry.notes}</p>}
-
-                          {/* Display survey answers if available */}
-                          {entry.surveyAnswers && entry.surveyAnswers.length > 0 && (
-                            <div className="mt-4 bg-blue-50 p-4 rounded-md">
-                              <h4 className="text-sm font-medium text-blue-800 mb-2">Survey Responses</h4>
-                              <div className="space-y-2">
-                                {entry.surveyAnswers.map((answer, index) => (
-                                  <div key={index} className="text-sm text-blue-700">
-                                    <span className="font-medium">Q{index + 1}:</span> {answer.answer}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))
+                  <div className="space-y-4">
+                    {sortedDates.map((date) => (
+                      <DailyEmotionFolder
+                        key={date}
+                        date={date}
+                        entries={groupedEntries[date]}
+                        onDeleteEntry={handleDelete}
+                      />
+                    ))}
+                  </div>
                 )}
               </AnimatePresence>
             )}
