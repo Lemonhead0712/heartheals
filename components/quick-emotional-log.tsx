@@ -1,0 +1,188 @@
+"use client"
+
+import type React from "react"
+
+import { useState } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Textarea } from "@/components/ui/textarea"
+import { EmojiPicker } from "@/components/emoji-picker"
+import { useEmotionLogs } from "@/hooks/use-emotion-logs"
+import { ArrowRight, Save } from "lucide-react"
+import Link from "next/link"
+import { useToast } from "@/hooks/use-toast"
+import { useHapticContext } from "@/contexts/haptic-context"
+import { HapticButton } from "@/components/ui/haptic-button"
+
+export function QuickEmotionalLog() {
+  const [selectedEmoji, setSelectedEmoji] = useState("😊")
+  const [emotion, setEmotion] = useState("")
+  const [notes, setNotes] = useState("")
+  const [intensity, setIntensity] = useState(5)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const { addEntry } = useEmotionLogs()
+  const { toast } = useToast()
+  const { haptic, patternHaptic } = useHapticContext()
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!emotion.trim()) {
+      toast({
+        title: "Please enter an emotion",
+        description: "Tell us how you're feeling right now",
+        variant: "destructive",
+      })
+      patternHaptic("error")
+      return
+    }
+
+    setIsSubmitting(true)
+
+    const success = addEntry({
+      emotion,
+      emoji: selectedEmoji,
+      intensity,
+      notes,
+    })
+
+    if (success) {
+      // Reset form
+      setEmotion("")
+      setSelectedEmoji("😊")
+      setNotes("")
+      setIntensity(5)
+
+      toast({
+        title: "Emotion logged",
+        description: "Your emotional state has been recorded",
+      })
+
+      patternHaptic("success")
+    } else {
+      patternHaptic("error")
+    }
+
+    setIsSubmitting(false)
+  }
+
+  const handleEmotionSelect = (e: string) => {
+    setEmotion(e)
+    haptic("light")
+  }
+
+  const handleIntensityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIntensity(Number.parseInt(e.target.value))
+    // Only trigger haptic on significant changes to avoid too much vibration
+    if (Math.abs(intensity - Number.parseInt(e.target.value)) >= 2) {
+      haptic("light")
+    }
+  }
+
+  // Common emotions for quick selection
+  const commonEmotions = ["Happy", "Calm", "Sad", "Anxious", "Excited", "Tired", "Frustrated", "Grateful"]
+
+  return (
+    <Card className="h-full border-pink-200 bg-white/80 backdrop-blur-sm shadow-md">
+      <CardHeader>
+        <CardTitle className="text-pink-700">Emotional State Log</CardTitle>
+        <CardDescription className="text-pink-600">How are you feeling right now?</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex flex-col items-center mb-4">
+            <EmojiPicker selectedEmoji={selectedEmoji} onEmojiSelect={setSelectedEmoji} />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-pink-700">I'm feeling...</label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {commonEmotions.map((e) => (
+                <HapticButton
+                  key={e}
+                  type="button"
+                  variant={emotion === e ? "default" : "outline"}
+                  className={`rounded-full ${
+                    emotion === e
+                      ? "bg-pink-500 hover:bg-pink-600 text-white"
+                      : "border-pink-200 text-pink-700 hover:bg-pink-100"
+                  }`}
+                  onClick={() => handleEmotionSelect(e)}
+                  hapticIntensity="light"
+                >
+                  {e}
+                </HapticButton>
+              ))}
+            </div>
+            <input
+              type="text"
+              value={emotion}
+              onChange={(e) => setEmotion(e.target.value)}
+              placeholder="Enter your emotion..."
+              className="w-full px-3 py-2 border border-pink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-pink-700 flex justify-between">
+              <span>Intensity: {intensity}/10</span>
+            </label>
+            <input
+              type="range"
+              min="1"
+              max="10"
+              value={intensity}
+              onChange={handleIntensityChange}
+              className="w-full accent-pink-500"
+            />
+            <div className="flex justify-between text-xs text-pink-600">
+              <span>Mild</span>
+              <span>Moderate</span>
+              <span>Intense</span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-pink-700">Notes (optional)</label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add any thoughts or reflections..."
+              className="min-h-[80px] border-pink-200 focus-visible:ring-pink-500"
+            />
+          </div>
+
+          <div className="flex justify-between pt-2">
+            <HapticButton
+              type="submit"
+              className="bg-pink-600 hover:bg-pink-700"
+              disabled={!emotion.trim() || isSubmitting}
+              hapticPattern="success"
+            >
+              {isSubmitting ? (
+                <>Saving...</>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Entry
+                </>
+              )}
+            </HapticButton>
+
+            <HapticButton
+              asChild
+              variant="outline"
+              className="border-pink-200 text-pink-700 hover:bg-pink-50"
+              hapticIntensity="light"
+            >
+              <Link href="/emotional-log">
+                View All Entries
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </HapticButton>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  )
+}

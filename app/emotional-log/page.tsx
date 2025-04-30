@@ -1,0 +1,351 @@
+"use client"
+
+import type React from "react"
+
+import { useState } from "react"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { ChevronLeft, Plus, Save, Trash2, AlertCircle } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Logo } from "@/components/logo"
+import { BottomNav } from "@/components/bottom-nav"
+import { EmojiPicker } from "@/components/emoji-picker"
+import { FeatureGate } from "@/components/feature-gate"
+import { SubscriptionStatus } from "@/components/subscription-status"
+import { useEmotionLogs } from "@/hooks/use-emotion-logs"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { PageContainer } from "@/components/page-container"
+import { EmotionalSurvey } from "@/components/emotional-survey"
+import { EnhancedEmotionalAnalytics } from "@/components/enhanced-emotional-analytics"
+
+export default function EmotionalLogPage() {
+  return (
+    <PageContainer>
+      <EmotionalLog />
+    </PageContainer>
+  )
+}
+
+function EmotionalLog() {
+  const { entries, isLoading, error, addEntry, deleteEntry } = useEmotionLogs()
+
+  // Ensure we have a valid entries array
+  const emotionLogs = entries || []
+
+  const [currentEmotion, setCurrentEmotion] = useState("")
+  const [selectedEmoji, setSelectedEmoji] = useState("😊")
+  const [intensity, setIntensity] = useState(5)
+  const [notes, setNotes] = useState("")
+  const [showSurvey, setShowSurvey] = useState(false)
+
+  const emotions = [
+    "Joy",
+    "Sadness",
+    "Anger",
+    "Fear",
+    "Surprise",
+    "Disgust",
+    "Trust",
+    "Anticipation",
+    "Calm",
+    "Anxious",
+  ]
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    const success = addEntry({
+      emotion: currentEmotion,
+      emoji: selectedEmoji,
+      intensity: intensity,
+      notes: notes,
+    })
+
+    if (success) {
+      setCurrentEmotion("")
+      setSelectedEmoji("😊")
+      setIntensity(5)
+      setNotes("")
+      setShowSurvey(true)
+    }
+  }
+
+  const handleDelete = (id: string) => {
+    if (window.confirm("Are you sure you want to delete this entry?")) {
+      deleteEntry(id)
+    }
+  }
+
+  // Animation variants
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.2,
+      },
+    },
+  }
+
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.5,
+        ease: "easeOut",
+      },
+    },
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#fce4ec] via-[#e0f7fa] to-[#ede7f6] pb-20">
+      <motion.div
+        className="container mx-auto px-4 py-8 max-w-4xl"
+        variants={container}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.div className="flex flex-col items-center mb-6" variants={item}>
+          <Logo size="small" />
+        </motion.div>
+
+        <motion.div className="mb-8 flex justify-between items-center" variants={item}>
+          <div>
+            <Link href="/" className="inline-flex items-center text-pink-700 hover:text-pink-900 transition-colors">
+              <ChevronLeft className="mr-1 h-4 w-4" />
+              Back to Dashboard
+            </Link>
+            <h1 className="text-3xl font-bold text-pink-800 mt-4 mb-2">Emotional State Log</h1>
+            <p className="text-pink-600">Track your emotions and reflect on your emotional patterns</p>
+          </div>
+          <div>
+            <SubscriptionStatus />
+          </div>
+        </motion.div>
+
+        {error && (
+          <motion.div className="mb-4" variants={item}>
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          </motion.div>
+        )}
+
+        <FeatureGate featureId="emotional-log">
+          <motion.div variants={item}>
+            <Card className="mb-8 border-pink-200 bg-white/90 backdrop-blur-sm shadow-md">
+              <CardHeader>
+                <CardTitle className="text-pink-700">How are you feeling?</CardTitle>
+                <CardDescription className="text-pink-600">Log your current emotional state</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="emotion" className="text-pink-700">
+                      Emotion
+                    </Label>
+                    <div className="flex flex-wrap gap-2">
+                      {emotions.map((emotion) => (
+                        <Button
+                          key={emotion}
+                          type="button"
+                          variant={currentEmotion === emotion ? "default" : "outline"}
+                          className={`rounded-full ${
+                            currentEmotion === emotion
+                              ? "bg-pink-500 hover:bg-pink-600 text-white"
+                              : "border-pink-200 text-pink-700 hover:bg-pink-100"
+                          }`}
+                          onClick={() => setCurrentEmotion(emotion)}
+                        >
+                          {emotion}
+                        </Button>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="rounded-full border-pink-200 text-pink-700 hover:bg-pink-100"
+                        onClick={() => setCurrentEmotion("")}
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Other
+                      </Button>
+                    </div>
+                    {currentEmotion === "" && (
+                      <Input
+                        id="custom-emotion"
+                        placeholder="Enter your emotion"
+                        className="mt-2 border-pink-200 focus-visible:ring-pink-500"
+                        value={currentEmotion}
+                        onChange={(e) => setCurrentEmotion(e.target.value)}
+                      />
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="emoji" className="text-pink-700">
+                      Choose an emoji that represents how you feel
+                    </Label>
+                    <div className="mt-2">
+                      <EmojiPicker selectedEmoji={selectedEmoji} onEmojiSelect={setSelectedEmoji} />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="intensity" className="text-pink-700">
+                      Intensity: {intensity}
+                    </Label>
+                    <Input
+                      id="intensity"
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={intensity}
+                      onChange={(e) => setIntensity(Number.parseInt(e.target.value))}
+                      className="accent-pink-500"
+                    />
+                    <div className="flex justify-between text-xs text-pink-600">
+                      <span>Mild</span>
+                      <span>Moderate</span>
+                      <span>Intense</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="notes" className="text-pink-700">
+                      Notes
+                    </Label>
+                    <Textarea
+                      id="notes"
+                      placeholder="What triggered this emotion? How does it feel in your body?"
+                      className="min-h-[100px] border-pink-200 focus-visible:ring-pink-500"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full bg-pink-600 hover:bg-pink-700 text-white"
+                    disabled={!currentEmotion.trim()}
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Entry
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Show survey after a successful entry */}
+          {showSurvey && emotionLogs && emotionLogs.length > 0 && (
+            <motion.div
+              variants={item}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <EmotionalSurvey onComplete={() => setShowSurvey(false)} />
+            </motion.div>
+          )}
+
+          <motion.div className="space-y-4" variants={item}>
+            <h2 className="text-2xl font-semibold text-pink-800">Your Emotional Journey</h2>
+
+            {isLoading ? (
+              <div className="flex justify-center items-center py-8">
+                <LoadingSpinner size="md" />
+              </div>
+            ) : (
+              <AnimatePresence>
+                {emotionLogs && emotionLogs.length === 0 ? (
+                  <Card className="border-pink-200 bg-white/80 backdrop-blur-sm p-8 text-center text-pink-600">
+                    No entries yet. Start tracking your emotions above.
+                  </Card>
+                ) : (
+                  emotionLogs &&
+                  emotionLogs.map((entry) => (
+                    <motion.div
+                      key={entry.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.5 }}
+                    >
+                      <Card className="border-pink-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
+                        <CardContent className="pt-6 relative">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="absolute top-2 right-2 h-8 w-8 p-0 text-pink-400 hover:text-pink-700 hover:bg-pink-100"
+                            onClick={() => handleDelete(entry.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Delete</span>
+                          </Button>
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-3xl" role="img" aria-label={entry.emotion}>
+                                {entry.emoji}
+                              </span>
+                              <div>
+                                <h3 className="text-xl font-medium text-pink-800">{entry.emotion}</h3>
+                                <p className="text-sm text-pink-600">
+                                  {new Date(entry.timestamp).toLocaleDateString()} at{" "}
+                                  {new Date(entry.timestamp).toLocaleTimeString([], {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="bg-pink-100 text-pink-800 px-2 py-1 rounded-full text-sm">
+                              Intensity: {entry.intensity}/10
+                            </div>
+                          </div>
+                          {entry.notes && <p className="mt-4 text-pink-700 bg-pink-50 p-4 rounded-md">{entry.notes}</p>}
+
+                          {/* Display survey answers if available */}
+                          {entry.surveyAnswers && entry.surveyAnswers.length > 0 && (
+                            <div className="mt-4 bg-blue-50 p-4 rounded-md">
+                              <h4 className="text-sm font-medium text-blue-800 mb-2">Survey Responses</h4>
+                              <div className="space-y-2">
+                                {entry.surveyAnswers.map((answer, index) => (
+                                  <div key={index} className="text-sm text-blue-700">
+                                    <span className="font-medium">Q{index + 1}:</span> {answer.answer}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))
+                )}
+              </AnimatePresence>
+            )}
+          </motion.div>
+        </FeatureGate>
+
+        {/* Enhanced Emotional Analytics Section */}
+        <motion.div className="mt-10" variants={item}>
+          <h2 className="text-2xl font-semibold text-pink-800 mb-4">Emotional Analytics</h2>
+          <EnhancedEmotionalAnalytics emotionLogs={emotionLogs} isLoading={isLoading} error={error} />
+        </motion.div>
+      </motion.div>
+
+      <BottomNav />
+    </div>
+  )
+}
