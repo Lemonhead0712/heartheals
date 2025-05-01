@@ -59,14 +59,16 @@
     "vaul": "^0.9.6",
     "zod": "^3.24.1",
     "@emotion/is-prop-valid": "latest",
+    "@supabase/supabase-js": "latest",
     "@stripe/stripe-js": "latest",
     "framer-motion": "latest",
     "stripe": "latest",
     "canvas-confetti": "latest",
-    "@stripe/react-stripe-js": "latest",
     "@react-email/components": "latest",
     "resend": "latest",
-    "@react-email/render": "latest"
+    "@react-email/render": "latest",
+    "@supabase/auth-helpers-nextjs": "latest",
+    "@stripe/react-stripe-js": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

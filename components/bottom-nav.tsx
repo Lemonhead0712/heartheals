@@ -10,7 +10,7 @@ import { useHapticContext } from "@/contexts/haptic-context"
 import { Logo } from "./logo"
 import StatusIconTooltip from "./status-icon-tooltip"
 import { useAuth } from "@/contexts/auth-context"
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useMobile } from "@/hooks/use-mobile"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -38,6 +38,45 @@ export function BottomNav() {
       setIsMenuOpen(false)
     }
   }
+
+  const handleEscape = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isMenuOpen) {
+        setIsMenuOpen(false)
+      }
+    },
+    [isMenuOpen],
+  )
+
+  const handleClickOutside = useCallback(
+    (e: MouseEvent) => {
+      // Check if the click is outside the menu and not on the menu button
+      if (
+        isMenuOpen &&
+        e.target instanceof Node &&
+        !document.querySelector('[role="dialog"]')?.contains(e.target) &&
+        !document.querySelector('[aria-label="Toggle menu"]')?.contains(e.target)
+      ) {
+        setIsMenuOpen(false)
+      }
+    },
+    [isMenuOpen],
+  )
+
+  useEffect(() => {
+    // Only add event listeners if we're on mobile
+    if (isMobile) {
+      document.addEventListener("keydown", handleEscape)
+      document.addEventListener("mousedown", handleClickOutside)
+
+      return () => {
+        document.removeEventListener("keydown", handleEscape)
+        document.removeEventListener("mousedown", handleClickOutside)
+      }
+    }
+    // Clean-up function still needed even if condition not met
+    return () => {}
+  }, [handleEscape, handleClickOutside, isMobile])
 
   const navItems = [
     {
@@ -72,7 +111,7 @@ export function BottomNav() {
     },
   ]
 
-  // Only render on mobile
+  // Return null for non-mobile, but after all hooks are defined
   if (!isMobile) return null
 
   return (
@@ -103,7 +142,14 @@ export function BottomNav() {
 
             <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-purple-700">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-purple-700"
+                  onClick={() => setIsMenuOpen((prev) => !prev)}
+                  aria-expanded={isMenuOpen}
+                  aria-label="Toggle menu"
+                >
                   <Menu className="h-5 w-5" />
                   <span className="sr-only">Menu</span>
                 </Button>

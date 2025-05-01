@@ -13,7 +13,8 @@ import { useToast } from "@/hooks/use-toast"
 import { useSubscription } from "@/contexts/subscription-context"
 import { motion, AnimatePresence } from "framer-motion"
 import confetti from "canvas-confetti"
-import { Check, Heart } from "lucide-react"
+import { Check, Heart, Loader2 } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
@@ -198,6 +199,8 @@ function PaymentFormContent({ amount, onPaymentStatusChange }: PaymentFormProps)
   const { toast } = useToast()
   const router = useRouter()
   const { setTier, setIsActive, setExpiresAt } = useSubscription()
+  const { user, isAuthenticated } = useAuth() // Use our custom auth context instead of Clerk
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -256,6 +259,9 @@ function PaymentFormContent({ amount, onPaymentStatusChange }: PaymentFormProps)
       } catch (emailError) {
         console.error("Error sending confirmation email:", emailError)
       }
+
+      // Show success animation
+      setShowSuccessAnimation(true)
     } catch (err) {
       console.error("Payment error:", err)
       setError(err instanceof Error ? err.message : "An unexpected error occurred")
@@ -271,19 +277,25 @@ function PaymentFormContent({ amount, onPaymentStatusChange }: PaymentFormProps)
   }
 
   const handleRedirectAfterSuccess = () => {
-    router.push("/")
+    // If user is not logged in, redirect to account creation page
+    if (!isAuthenticated) {
+      router.push(`/create-account?email=${encodeURIComponent(email)}`)
+    } else {
+      // Otherwise redirect to home page
+      router.push("/")
 
-    toast({
-      title: "Welcome to Premium!",
-      description: "Your subscription has been activated successfully.",
-      variant: "default",
-    })
+      toast({
+        title: "Welcome to Premium!",
+        description: "Your subscription has been activated successfully.",
+        variant: "default",
+      })
+    }
   }
 
   return (
     <>
       <AnimatePresence>
-        {succeeded && <PaymentSuccessAnimation onComplete={handleRedirectAfterSuccess} />}
+        {showSuccessAnimation && <PaymentSuccessAnimation onComplete={handleRedirectAfterSuccess} />}
       </AnimatePresence>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -362,7 +374,14 @@ function PaymentFormContent({ amount, onPaymentStatusChange }: PaymentFormProps)
             disabled={!stripe || processing}
             className="w-full bg-purple-600 hover:bg-purple-700 text-white"
           >
-            {processing ? "Processing..." : `Pay $${(amount / 100).toFixed(2)}`}
+            {processing ? (
+              <span className="flex items-center justify-center">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processing...
+              </span>
+            ) : (
+              `Pay $${(amount / 100).toFixed(2)}`
+            )}
           </Button>
         </div>
       </form>
