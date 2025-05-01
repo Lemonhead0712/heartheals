@@ -19,6 +19,26 @@ const config = {
       },
     },
     extend: {
+      fontFamily: {
+        playfair: ["var(--font-playfair)"],
+        inter: ["var(--font-inter)"],
+      },
+      fontSize: {
+        // Refined type scale for better hierarchy
+        xs: ["0.75rem", { lineHeight: "1rem" }],
+        sm: ["0.875rem", { lineHeight: "1.25rem" }],
+        base: ["1rem", { lineHeight: "1.5rem" }],
+        lg: ["1.125rem", { lineHeight: "1.75rem" }],
+        xl: ["1.25rem", { lineHeight: "1.75rem" }],
+        "2xl": ["1.5rem", { lineHeight: "2rem" }],
+        "3xl": ["1.875rem", { lineHeight: "2.25rem" }],
+        "4xl": ["2.25rem", { lineHeight: "2.5rem" }],
+        "5xl": ["3rem", { lineHeight: "1.2" }],
+        "6xl": ["3.75rem", { lineHeight: "1.1" }],
+        "7xl": ["4.5rem", { lineHeight: "1.1" }],
+        "8xl": ["6rem", { lineHeight: "1" }],
+        "9xl": ["8rem", { lineHeight: "1" }],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -115,6 +135,23 @@ const config = {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+      },
+      lineHeight: {
+        tighter: "1.1",
+        tight: "1.2",
+        snug: "1.3",
+        normal: "1.5",
+        relaxed: "1.625",
+        loose: "2",
+      },
+      letterSpacing: {
+        tightest: "-.05em",
+        tighter: "-.025em",
+        tight: "-.0125em",
+        normal: "0",
+        wide: ".0125em",
+        wider: ".025em",
+        widest: ".05em",
       },
     },
   },

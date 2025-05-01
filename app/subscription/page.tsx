@@ -1,7 +1,10 @@
 "use client"
 
-import { useState, useRef } from "react"
+import type React from "react"
+
+import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { ChevronLeft, Check, Shield, CreditCard, Calendar, Info, X } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,16 +16,67 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { useSubscription } from "@/contexts/subscription-context"
+import { useAuth } from "@/contexts/auth-context"
 import { SubscriptionStatus } from "@/components/subscription-status"
 import { SubscriptionQRCode } from "@/components/subscription-qr-code"
 import { PageContainer } from "@/components/page-container"
+import { useToast } from "@/hooks/use-toast"
 
 export default function SubscriptionPage() {
-  const { tier, isActive } = useSubscription()
+  const { tier, isActive, setTier, setIsActive } = useSubscription()
+  const { user } = useAuth()
   const [paymentStatus, setPaymentStatus] = useState<"idle" | "processing" | "success" | "error">("idle")
   const [errorMessage, setErrorMessage] = useState("")
   const [paymentMethod, setPaymentMethod] = useState<"card" | "qr" | "manage">("card")
+  const [redirectDestination, setRedirectDestination] = useState<string | null>(null)
   const paymentSectionRef = useRef<HTMLDivElement>(null)
+  const { toast } = useToast()
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [stripeConfigValid, setStripeConfigValid] = useState(true)
+  const router = useRouter()
+
+  // Check if Stripe is properly initialized
+  useEffect(() => {
+    const checkStripeConfig = async () => {
+      try {
+        const response = await fetch("/api/subscription/validate-config")
+        const data = await response.json()
+
+        // Check if the response indicates success
+        if (response.ok && data.status === "ok") {
+          setStripeConfigValid(true)
+        } else {
+          console.error("Stripe configuration issue:", data.message)
+          setStripeConfigValid(false)
+          toast({
+            title: "Payment System Notice",
+            description: data.message || "Payment system configuration issue detected.",
+            variant: "destructive",
+          })
+        }
+      } catch (error) {
+        console.error("Error checking Stripe configuration:", error)
+        setStripeConfigValid(false)
+        toast({
+          title: "Payment System Error",
+          description: "Unable to validate payment system configuration.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoaded(true)
+      }
+    }
+
+    checkStripeConfig()
+  }, [toast])
+
+  // Check for post-subscription redirect
+  useEffect(() => {
+    const storedRedirect = localStorage.getItem("heartsHeal_postSubscriptionRedirect")
+    if (storedRedirect) {
+      setRedirectDestination(storedRedirect)
+    }
+  }, [])
 
   // Animation variants
   const container = {
@@ -50,9 +104,60 @@ export default function SubscriptionPage() {
 
   const handlePaymentStatusChange = (status: "idle" | "processing" | "success" | "error", message?: string) => {
     setPaymentStatus(status)
+
+    if (status === "success") {
+      // Update subscription status
+      setTier("premium")
+      setIsActive(true)
+
+      // Show success message
+      toast({
+        title: "Payment Successful",
+        description: "Your payment was processed successfully. Creating your account...",
+        variant: "default",
+      })
+
+      // If user is not logged in, redirect to account creation
+      if (!user) {
+        // Short delay to allow toast to be seen
+        setTimeout(() => {
+          router.push("/create-account?source=payment")
+        }, 1500)
+      } else {
+        // User is already logged in, handle redirect after successful subscription
+        setTimeout(() => {
+          if (redirectDestination) {
+            localStorage.removeItem("heartsHeal_postSubscriptionRedirect")
+            router.push(redirectDestination)
+          } else {
+            router.push("/")
+          }
+        }, 1500)
+      }
+    }
+
     if (status === "error" && message) {
       setErrorMessage(message)
+      toast({
+        title: "Payment Error",
+        description: message || "There was an issue processing your payment. Please try again.",
+        variant: "destructive",
+      })
     }
+  }
+
+  // Loading state
+  if (!isLoaded) {
+    return (
+      <PageContainer>
+        <div className="min-h-screen bg-gradient-to-br from-[#fce4ec] via-[#e0f7fa] to-[#ede7f6] flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-700 mx-auto mb-4"></div>
+            <p className="text-purple-700">Loading subscription options...</p>
+          </div>
+        </div>
+      </PageContainer>
+    )
   }
 
   return (
@@ -85,6 +190,44 @@ export default function SubscriptionPage() {
             </div>
           </motion.div>
 
+          {/* Redirect Notice */}
+          {redirectDestination && (
+            <motion.div
+              className="mb-6"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <Alert className="border-blue-200 bg-blue-50/80 backdrop-blur-sm">
+                <Info className="h-4 w-4 text-blue-600" />
+                <AlertTitle className="text-blue-800">Premium Access Required</AlertTitle>
+                <AlertDescription className="text-blue-700">
+                  The page you were trying to access requires a premium subscription. After subscribing, you'll be
+                  automatically redirected to your destination.
+                </AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
+
+          {/* Stripe Configuration Warning */}
+          {!stripeConfigValid && (
+            <motion.div
+              className="mb-6"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <Alert className="border-amber-200 bg-amber-50/80 backdrop-blur-sm">
+                <Info className="h-4 w-4 text-amber-600" />
+                <AlertTitle className="text-amber-800">Payment System Notice</AlertTitle>
+                <AlertDescription className="text-amber-700">
+                  The payment system is currently in test mode. You can try the subscription flow, but no actual charges
+                  will be made.
+                </AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
+
           {/* Payment Status Messages */}
           {paymentStatus === "error" && (
             <motion.div
@@ -98,6 +241,29 @@ export default function SubscriptionPage() {
                 <AlertTitle className="text-red-800">Payment Failed</AlertTitle>
                 <AlertDescription className="text-red-700">
                   {errorMessage || "There was an issue processing your payment. Please try again."}
+                </AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
+
+          {/* Not Logged In Warning */}
+          {!user && (
+            <motion.div
+              className="mb-6"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <Alert className="border-amber-200 bg-amber-50/80 backdrop-blur-sm">
+                <Info className="h-4 w-4 text-amber-600" />
+                <AlertTitle className="text-amber-800">Account Required</AlertTitle>
+                <AlertDescription className="text-amber-700 flex flex-col sm:flex-row sm:items-center gap-2">
+                  <span>Please log in or create an account to manage your subscription.</span>
+                  <Link href="/login" className="text-amber-800 font-medium hover:underline">
+                    <Button variant="outline" size="sm" className="border-amber-300 bg-amber-100/50">
+                      Log In
+                    </Button>
+                  </Link>
                 </AlertDescription>
               </Alert>
             </motion.div>
@@ -152,6 +318,13 @@ export default function SubscriptionPage() {
                     variant="outline"
                     className="w-full border-purple-200 text-purple-700 hover:bg-purple-50"
                     disabled={tier === "free" && isActive}
+                    onClick={() => {
+                      // If there was a redirect destination, clear it
+                      if (redirectDestination) {
+                        localStorage.removeItem("heartsHeal_postSubscriptionRedirect")
+                      }
+                      window.location.href = "/"
+                    }}
                   >
                     {tier === "free" && isActive ? "Current Plan" : "Continue with Free"}
                   </Button>
@@ -303,10 +476,12 @@ export default function SubscriptionPage() {
                     </TabsList>
 
                     <TabsContent value="card">
-                      <PaymentForm
-                        amount={500} // $5.00 in cents
-                        onPaymentStatusChange={handlePaymentStatusChange}
-                      />
+                      <ErrorBoundary>
+                        <PaymentForm
+                          amount={500} // $5.00 in cents
+                          onPaymentStatusChange={handlePaymentStatusChange}
+                        />
+                      </ErrorBoundary>
                     </TabsContent>
 
                     <TabsContent value="qr">
@@ -327,7 +502,18 @@ export default function SubscriptionPage() {
                           <Button
                             variant="outline"
                             className="w-full border-purple-200 text-purple-700 hover:bg-purple-50"
-                            onClick={() => (window.location.href = "/api/subscription/portal")}
+                            onClick={() => {
+                              try {
+                                window.location.href = "/api/subscription/portal"
+                              } catch (error) {
+                                console.error("Error navigating to subscription portal:", error)
+                                toast({
+                                  title: "Navigation Error",
+                                  description: "Could not access subscription portal. Please try again later.",
+                                  variant: "destructive",
+                                })
+                              }
+                            }}
                           >
                             Manage Subscription
                           </Button>
@@ -366,4 +552,42 @@ export default function SubscriptionPage() {
       </div>
     </PageContainer>
   )
+}
+
+// Error boundary component to catch and display errors
+function ErrorBoundary({ children }: { children: React.ReactNode }) {
+  const [hasError, setHasError] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
+
+  useEffect(() => {
+    const errorHandler = (error: ErrorEvent) => {
+      console.error("Caught in error boundary:", error)
+      setHasError(true)
+      setError(error.error || new Error("Unknown error occurred"))
+      return true
+    }
+
+    window.addEventListener("error", errorHandler)
+    return () => window.removeEventListener("error", errorHandler)
+  }, [])
+
+  if (hasError) {
+    return (
+      <div className="p-6 border border-red-200 rounded-md bg-red-50">
+        <h3 className="text-lg font-medium text-red-800 mb-2">Payment System Error</h3>
+        <p className="text-red-600 mb-4">
+          {error?.message || "There was an issue loading the payment system. Please try again later."}
+        </p>
+        <Button
+          variant="outline"
+          className="border-red-200 text-red-700 hover:bg-red-100"
+          onClick={() => window.location.reload()}
+        >
+          Reload Page
+        </Button>
+      </div>
+    )
+  }
+
+  return <>{children}</>
 }

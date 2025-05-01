@@ -16,16 +16,42 @@ export async function POST(request: Request) {
       amount,
     })
 
-    if (!result.success) {
-      return NextResponse.json({ error: "Failed to send confirmation email", details: result.error }, { status: 500 })
+    // Handle development mode
+    if (result.devMode) {
+      return NextResponse.json({
+        success: true,
+        emailSent: true,
+        devMode: true,
+        message: "Email logged in development mode (not actually sent)",
+      })
     }
 
-    return NextResponse.json({ success: true, messageId: result.data?.id })
+    if (!result.success) {
+      const errorMessage = result.errorDetails || "Failed to send confirmation email"
+      console.warn(errorMessage, result.error)
+
+      // Return a partial success to prevent breaking the payment flow
+      return NextResponse.json({
+        success: true,
+        emailSent: false,
+        warning: "Confirmation email could not be sent, but your subscription is active.",
+        details: errorMessage,
+      })
+    }
+
+    return NextResponse.json({
+      success: true,
+      emailSent: true,
+      messageId: result.data?.id,
+    })
   } catch (error) {
     console.error("Error in send-confirmation route:", error)
-    return NextResponse.json(
-      { error: "Internal server error", details: error instanceof Error ? error.message : String(error) },
-      { status: 500 },
-    )
+    // Return a partial success to prevent breaking the payment flow
+    return NextResponse.json({
+      success: true,
+      emailSent: false,
+      warning: "Confirmation email could not be sent, but your subscription is active.",
+      error: error instanceof Error ? error.message : String(error),
+    })
   }
 }

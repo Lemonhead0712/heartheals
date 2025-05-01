@@ -11,48 +11,119 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/logo"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, ArrowLeft } from "lucide-react"
+import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react"
 import Link from "next/link"
-import { useAuth } from "@/contexts/auth-context"
 import { PageContainer } from "@/components/page-container"
+import { useAuth } from "@/contexts/auth-context"
+import { useToast } from "@/hooks/use-toast"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [redirectTarget, setRedirectTarget] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<{
+    email?: string
+    password?: string
+  }>({})
+  const [isFromPayment, setIsFromPayment] = useState(false)
+  const [redirectPath, setRedirectPath] = useState<string | null>(null)
   const router = useRouter()
-  const { login, getIntendedDestination } = useAuth()
   const searchParams = useSearchParams()
+  const { login, authError, clearAuthError } = useAuth()
+  const { toast } = useToast()
 
-  // Check for redirect parameter in URL or stored intended destination
+  // Get parameters from URL
   useEffect(() => {
-    const redirectParam = searchParams.get("redirect")
-    if (redirectParam) {
-      setRedirectTarget(redirectParam)
-    } else {
-      const intended = getIntendedDestination()
-      if (intended) {
-        setRedirectTarget(intended)
+    try {
+      const emailParam = searchParams.get("email")
+      const sourceParam = searchParams.get("source")
+      const redirectParam = searchParams.get("redirect")
+
+      if (emailParam) {
+        setEmail(emailParam)
       }
+
+      if (sourceParam === "payment") {
+        setIsFromPayment(true)
+      }
+
+      if (redirectParam) {
+        setRedirectPath(redirectParam)
+      }
+    } catch (error) {
+      console.error("Error processing URL parameters:", error)
     }
-  }, [searchParams, getIntendedDestination])
+  }, [searchParams])
+
+  // Clear auth errors when component unmounts
+  useEffect(() => {
+    return () => {
+      clearAuthError()
+    }
+  }, [clearAuthError])
+
+  const validateForm = (): boolean => {
+    const errors: {
+      email?: string
+      password?: string
+    } = {}
+
+    // Email validation
+    if (!email) {
+      errors.email = "Email is required"
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = "Please enter a valid email address"
+    }
+
+    // Password validation
+    if (!password) {
+      errors.password = "Password is required"
+    }
+
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
+    clearAuthError()
+
+    // Validate form
+    if (!validateForm()) {
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
-      const success = await login(email, password, redirectTarget || undefined)
-      if (!success) {
-        setError("Invalid email or password. Please try again.")
+      // Attempt login
+      const success = await login(email, password, redirectPath || undefined)
+
+      if (success) {
+        toast({
+          title: "Login Successful",
+          description: isFromPayment
+            ? "Welcome back! Your premium subscription is now active."
+            : "Welcome back to HeartHeals!",
+          variant: "default",
+        })
+      } else {
+        // Login failed but no error was thrown
+        if (!authError) {
+          toast({
+            title: "Login Failed",
+            description: "Invalid email or password. Please try again.",
+            variant: "destructive",
+          })
+        }
       }
-      // No need to handle redirect here as it's now managed in the auth context
-    } catch (err) {
-      setError("An unexpected error occurred. Please try again.")
-      console.error(err)
+    } catch (error) {
+      console.error("Login error:", error)
+      toast({
+        title: "Login Error",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -87,15 +158,25 @@ export default function LoginPage() {
               <CardHeader>
                 <CardTitle className="text-2xl font-bold text-center text-purple-800">Welcome Back</CardTitle>
                 <CardDescription className="text-center text-purple-600">
-                  Sign in to access your premium features
-                  {redirectTarget && <span className="block mt-1 text-xs">You'll be redirected after login</span>}
+                  {isFromPayment
+                    ? "Log in to access your premium features"
+                    : "Log in to continue your wellness journey"}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {error && (
+                {authError && (
                   <Alert className="mb-4 border-red-200 bg-red-50 text-red-800">
                     <AlertCircle className="h-4 w-4 text-red-600 mr-2" />
-                    <AlertDescription>{error}</AlertDescription>
+                    <AlertDescription>{authError.message}</AlertDescription>
+                  </Alert>
+                )}
+
+                {isFromPayment && (
+                  <Alert className="mb-4 border-blue-200 bg-blue-50 text-blue-800">
+                    <AlertCircle className="h-4 w-4 text-blue-600 mr-2" />
+                    <AlertDescription>
+                      Your payment was successful! Log in to access your premium features.
+                    </AlertDescription>
                   </Alert>
                 )}
 
@@ -107,17 +188,26 @@ export default function LoginPage() {
                     <Input
                       id="email"
                       type="email"
-                      placeholder="your.email@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                      className={`border-purple-200 focus:border-purple-400 focus:ring-purple-400 ${
+                        fieldErrors.email ? "border-red-300" : ""
+                      }`}
+                      disabled={isSubmitting || !!searchParams.get("email")}
+                      aria-invalid={fieldErrors.email ? "true" : "false"}
                     />
+                    {fieldErrors.email && <p className="text-sm text-red-600 mt-1">{fieldErrors.email}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password" className="text-purple-700">
-                      Password
-                    </Label>
+                    <div className="flex justify-between items-center">
+                      <Label htmlFor="password" className="text-purple-700">
+                        Password
+                      </Label>
+                      <Link href="/forgot-password" className="text-xs text-purple-600 hover:underline">
+                        Forgot password?
+                      </Link>
+                    </div>
                     <Input
                       id="password"
                       type="password"
@@ -125,24 +215,34 @@ export default function LoginPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                      className={`border-purple-200 focus:border-purple-400 focus:ring-purple-400 ${
+                        fieldErrors.password ? "border-red-300" : ""
+                      }`}
+                      disabled={isSubmitting}
+                      aria-invalid={fieldErrors.password ? "true" : "false"}
                     />
+                    {fieldErrors.password && <p className="text-sm text-red-600 mt-1">{fieldErrors.password}</p>}
                   </div>
                   <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={isSubmitting}>
-                    {isSubmitting ? "Signing in..." : "Sign In"}
+                    {isSubmitting ? (
+                      <span className="flex items-center justify-center">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Logging in...
+                      </span>
+                    ) : (
+                      "Log In"
+                    )}
                   </Button>
                 </form>
               </CardContent>
               <CardFooter className="flex flex-col space-y-4">
-                <div className="text-sm text-center text-purple-600">
-                  <Link href="/forgot-password" className="hover:underline">
-                    Forgot your password?
-                  </Link>
-                </div>
                 <div className="text-sm text-center text-gray-500">
                   Don't have an account?{" "}
-                  <Link href="/subscription" className="text-purple-600 hover:underline">
-                    Subscribe to Premium
+                  <Link
+                    href={`/create-account${email ? `?email=${encodeURIComponent(email)}` : ""}`}
+                    className="text-purple-600 hover:underline"
+                  >
+                    Sign up
                   </Link>
                 </div>
                 <div className="w-full pt-2">
@@ -150,9 +250,10 @@ export default function LoginPage() {
                     variant="outline"
                     className="w-full border-purple-200 text-purple-700 hover:bg-purple-50"
                     onClick={() => router.push("/")}
+                    disabled={isSubmitting}
                   >
                     <ArrowLeft className="mr-2 h-4 w-4" />
-                    Continue as Guest
+                    Return to Home
                   </Button>
                 </div>
               </CardFooter>
@@ -160,7 +261,7 @@ export default function LoginPage() {
           </motion.div>
 
           <motion.div className="mt-6 text-center text-sm text-gray-500" variants={item}>
-            By signing in, you agree to our{" "}
+            By logging in, you agree to our{" "}
             <Link href="/terms" className="text-purple-600 hover:underline">
               Terms of Service
             </Link>{" "}

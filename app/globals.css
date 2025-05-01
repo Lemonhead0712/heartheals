@@ -39,6 +39,10 @@
     --chart-2: 340 82% 52%;
     --chart-3: 199 98% 48%;
     --chart-4: 162 47% 50%;
+
+    /* Font families */
+    --font-playfair: "Playfair Display", serif;
+    --font-inter: "Inter", sans-serif;
   }
 
   .dark {
@@ -82,14 +86,119 @@
   * {
     @apply border-border;
   }
+
+  /* Base body styling */
   body {
     @apply bg-background text-foreground;
     -webkit-tap-highlight-color: transparent;
+    font-family: var(--font-inter);
+    font-weight: 400;
+    line-height: 1.65;
+    letter-spacing: -0.011em;
   }
 
-  /* Ensure consistent link behavior across browsers */
+  /* Refined heading styles with Playfair Display */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-playfair);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.022em;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+  }
+
+  /* Specific heading sizes and styles */
+  h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+
+  h2 {
+    font-size: 2rem;
+    font-weight: 700;
+  }
+
+  h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+
+  h4 {
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  h5 {
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  h6 {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  /* Paragraph styling */
+  p {
+    margin-bottom: 1rem;
+    font-weight: 400;
+    max-width: 65ch;
+  }
+
+  /* Refined link styling */
   a {
     -webkit-touch-callout: none;
+    color: hsl(var(--primary));
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+
+  /* Elegant blockquote styling */
+  blockquote {
+    border-left: 3px solid hsl(var(--primary));
+    padding-left: 1rem;
+    font-style: italic;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  /* Refined list styling */
+  ul,
+  ol {
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  li {
+    margin-bottom: 0.5rem;
+  }
+
+  /* Card title styling */
+  .card-title {
+    font-family: var(--font-playfair);
+    font-weight: 600;
+  }
+
+  /* Section title styling */
+  .section-title {
+    font-family: var(--font-playfair);
+    font-weight: 700;
+    font-size: 1.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  /* Page title styling */
+  .page-title {
+    font-family: var(--font-playfair);
+    font-weight: 800;
+    font-size: 2.25rem;
+    margin-bottom: 2rem;
   }
 
   /* Fix for iOS Safari bottom bar */
@@ -165,4 +274,61 @@
 .scrollbar-hide {
   -ms-overflow-style: none; /* IE and Edge */
   scrollbar-width: none; /* Firefox */
+}
+
+/* Typography utility classes */
+.font-light {
+  font-weight: 300;
+}
+
+.font-normal {
+  font-weight: 400;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.font-extrabold {
+  font-weight: 800;
+}
+
+.font-black {
+  font-weight: 900;
+}
+
+.italic {
+  font-style: italic;
+}
+
+.tracking-tighter {
+  letter-spacing: -0.05em;
+}
+
+.tracking-tight {
+  letter-spacing: -0.025em;
+}
+
+.tracking-normal {
+  letter-spacing: 0;
+}
+
+.tracking-wide {
+  letter-spacing: 0.025em;
+}
+
+.tracking-wider {
+  letter-spacing: 0.05em;
+}
+
+.tracking-widest {
+  letter-spacing: 0.1em;
 }

@@ -12,46 +12,121 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/logo"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, ArrowLeft, CheckCircle } from "lucide-react"
+import { AlertCircle, ArrowLeft, CheckCircle, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { PageContainer } from "@/components/page-container"
+import { useAuth } from "@/contexts/auth-context"
+import { useToast } from "@/hooks/use-toast"
+import { useSubscription } from "@/contexts/subscription-context"
+
+// Password validation rules
+const PASSWORD_MIN_LENGTH = 6
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/
 
 export default function CreateAccountPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [error, setError] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<{
+    email?: string
+    password?: string
+    confirmPassword?: string
+  }>({})
   const [success, setSuccess] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isFromPayment, setIsFromPayment] = useState(false)
+  const [paymentInfo, setPaymentInfo] = useState<any>(null)
+  const [isRedirecting, setIsRedirecting] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClientComponentClient()
+  const { login } = useAuth()
+  const { toast } = useToast()
+  const { updateSubscriptionStatus } = useSubscription()
 
-  // Get email from query parameter
+  // Get email from query parameter and check if coming from payment
   useEffect(() => {
-    const emailParam = searchParams.get("email")
-    if (emailParam) {
-      setEmail(emailParam)
+    try {
+      const emailParam = searchParams.get("email")
+      const sourceParam = searchParams.get("source")
+
+      if (emailParam) {
+        setEmail(emailParam)
+      }
+
+      if (sourceParam === "payment") {
+        setIsFromPayment(true)
+
+        // Get payment info from localStorage
+        const storedPaymentInfo = localStorage.getItem("heartsHeal_paymentInfo")
+        if (storedPaymentInfo) {
+          try {
+            const parsedInfo = JSON.parse(storedPaymentInfo)
+            setPaymentInfo(parsedInfo)
+
+            // If email wasn't in URL params but is in payment info, use it
+            if (!emailParam && parsedInfo.email) {
+              setEmail(parsedInfo.email)
+            }
+          } catch (parseError) {
+            console.error("Error parsing payment info:", parseError)
+          }
+        }
+
+        toast({
+          title: "Payment Successful",
+          description: "Please create your account to access premium features",
+          variant: "default",
+        })
+      }
+    } catch (error) {
+      console.error("Error processing URL parameters:", error)
     }
-  }, [searchParams])
+  }, [searchParams, toast])
+
+  const validateForm = (): boolean => {
+    const errors: {
+      email?: string
+      password?: string
+      confirmPassword?: string
+    } = {}
+
+    // Email validation
+    if (!email) {
+      errors.email = "Email is required"
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = "Please enter a valid email address"
+    }
+
+    // Password validation
+    if (!password) {
+      errors.password = "Password is required"
+    } else if (password.length < PASSWORD_MIN_LENGTH) {
+      errors.password = `Password must be at least ${PASSWORD_MIN_LENGTH} characters`
+    } else if (!PASSWORD_REGEX.test(password)) {
+      errors.password = "Password must include uppercase, lowercase, number and special character"
+    }
+
+    // Confirm password validation
+    if (password !== confirmPassword) {
+      errors.confirmPassword = "Passwords do not match"
+    }
+
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
+    setError(null)
+
+    // Validate form
+    if (!validateForm()) {
+      return
+    }
+
     setIsSubmitting(true)
-
-    // Basic validation
-    if (password !== confirmPassword) {
-      setError("Passwords do not match")
-      setIsSubmitting(false)
-      return
-    }
-
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters")
-      setIsSubmitting(false)
-      return
-    }
 
     try {
       // Create user account with Supabase
@@ -67,17 +142,88 @@ export default function CreateAccountPage() {
         throw signUpError
       }
 
+      if (data?.user?.identities?.length === 0) {
+        throw new Error("This email is already registered. Please log in instead.")
+      }
+
       // Show success message
       setSuccess(true)
 
-      // Redirect to login page after a short delay
-      setTimeout(() => {
-        router.push("/login")
-      }, 3000)
+      // If from payment, update subscription status
+      if (isFromPayment) {
+        updateSubscriptionStatus("premium", true)
+      }
+
+      // Automatically log the user in
+      try {
+        const loginSuccess = await login(email, password)
+
+        if (loginSuccess) {
+          toast({
+            title: "Account Created",
+            description: "Your account has been created and you've been logged in automatically.",
+            variant: "default",
+          })
+
+          // Clear payment info from localStorage
+          localStorage.removeItem("heartsHeal_paymentInfo")
+
+          // Set redirecting state
+          setIsRedirecting(true)
+
+          // Redirect based on source
+          if (isFromPayment) {
+            // Check for stored redirect destination
+            const redirectDestination = localStorage.getItem("heartsHeal_postSubscriptionRedirect")
+            if (redirectDestination) {
+              localStorage.removeItem("heartsHeal_postSubscriptionRedirect")
+              router.push(redirectDestination)
+            } else {
+              // Default to dashboard
+              router.push("/")
+            }
+          } else {
+            // Regular account creation flow
+            router.push("/")
+          }
+        } else {
+          // If auto-login fails, show message and redirect to login page
+          toast({
+            title: "Account Created",
+            description: "Your account has been created. Please log in to continue.",
+            variant: "default",
+          })
+
+          setTimeout(() => {
+            setIsRedirecting(true)
+            router.push("/login")
+          }, 2000)
+        }
+      } catch (loginError) {
+        console.error("Auto-login error:", loginError)
+
+        // If auto-login fails, redirect to login page
+        toast({
+          title: "Account Created",
+          description: "Your account has been created, but we couldn't log you in automatically. Please log in.",
+          variant: "default",
+        })
+
+        setTimeout(() => {
+          setIsRedirecting(true)
+          router.push("/login")
+        }, 2000)
+      }
     } catch (err: any) {
       console.error("Account creation error:", err)
-      setError(err.message || "Failed to create account. Please try again.")
-    } finally {
+
+      // Handle specific Supabase errors
+      if (err.message?.includes("already registered")) {
+        setError("This email is already registered. Please log in instead.")
+      } else {
+        setError(err.message || "Failed to create account. Please try again.")
+      }
+
       setIsSubmitting(false)
     }
   }
@@ -111,7 +257,9 @@ export default function CreateAccountPage() {
               <CardHeader>
                 <CardTitle className="text-2xl font-bold text-center text-purple-800">Create Your Account</CardTitle>
                 <CardDescription className="text-center text-purple-600">
-                  Complete your account setup to access premium features
+                  {isFromPayment
+                    ? "Complete your account setup to access your premium features"
+                    : "Join HeartHeals to start your wellness journey"}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -125,7 +273,9 @@ export default function CreateAccountPage() {
                 {success && (
                   <Alert className="mb-4 border-green-200 bg-green-50 text-green-800">
                     <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                    <AlertDescription>Account created successfully! Redirecting to login page...</AlertDescription>
+                    <AlertDescription>
+                      {isRedirecting ? "Redirecting you..." : "Account created successfully! Logging you in..."}
+                    </AlertDescription>
                   </Alert>
                 )}
 
@@ -140,9 +290,13 @@ export default function CreateAccountPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
-                      disabled={!!searchParams.get("email")}
+                      className={`border-purple-200 focus:border-purple-400 focus:ring-purple-400 ${
+                        fieldErrors.email ? "border-red-300" : ""
+                      }`}
+                      disabled={!!searchParams.get("email") || isSubmitting || success}
+                      aria-invalid={fieldErrors.email ? "true" : "false"}
                     />
+                    {fieldErrors.email && <p className="text-sm text-red-600 mt-1">{fieldErrors.email}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="password" className="text-purple-700">
@@ -155,8 +309,17 @@ export default function CreateAccountPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                      className={`border-purple-200 focus:border-purple-400 focus:ring-purple-400 ${
+                        fieldErrors.password ? "border-red-300" : ""
+                      }`}
+                      disabled={isSubmitting || success}
+                      aria-invalid={fieldErrors.password ? "true" : "false"}
                     />
+                    {fieldErrors.password && <p className="text-sm text-red-600 mt-1">{fieldErrors.password}</p>}
+                    <p className="text-xs text-gray-500 mt-1">
+                      Password must be at least 6 characters and include uppercase, lowercase, number and special
+                      character.
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword" className="text-purple-700">
@@ -169,15 +332,29 @@ export default function CreateAccountPage() {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
-                      className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                      className={`border-purple-200 focus:border-purple-400 focus:ring-purple-400 ${
+                        fieldErrors.confirmPassword ? "border-red-300" : ""
+                      }`}
+                      disabled={isSubmitting || success}
+                      aria-invalid={fieldErrors.confirmPassword ? "true" : "false"}
                     />
+                    {fieldErrors.confirmPassword && (
+                      <p className="text-sm text-red-600 mt-1">{fieldErrors.confirmPassword}</p>
+                    )}
                   </div>
                   <Button
                     type="submit"
                     className="w-full bg-purple-600 hover:bg-purple-700"
                     disabled={isSubmitting || success}
                   >
-                    {isSubmitting ? "Creating Account..." : "Create Account"}
+                    {isSubmitting ? (
+                      <span className="flex items-center justify-center">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating Account...
+                      </span>
+                    ) : (
+                      "Create Account"
+                    )}
                   </Button>
                 </form>
               </CardContent>
@@ -193,6 +370,7 @@ export default function CreateAccountPage() {
                     variant="outline"
                     className="w-full border-purple-200 text-purple-700 hover:bg-purple-50"
                     onClick={() => router.push("/")}
+                    disabled={isSubmitting || success}
                   >
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Return to Home

@@ -24,6 +24,7 @@ export type SubscriptionContextType = {
   setIsActive: (active: boolean) => void
   setExpiresAt: (date: Date | null) => void
   resetAllFeatureUsage: () => void
+  updateSubscriptionStatus: (newTier: "free" | "premium", newIsActive: boolean) => void
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined)
@@ -132,6 +133,26 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setTier(newTier)
   }
 
+  // Add a function to update subscription status
+  const updateSubscriptionStatus = (newTier: "free" | "premium", newIsActive: boolean) => {
+    setTier(newTier)
+    setIsActive(newIsActive)
+
+    // Save to localStorage
+    try {
+      localStorage.setItem(
+        "heartsHeal_subscription",
+        JSON.stringify({
+          tier: newTier,
+          isActive: newIsActive,
+          updatedAt: new Date().toISOString(),
+        }),
+      )
+    } catch (error) {
+      console.error("Error saving subscription status:", error)
+    }
+  }
+
   return (
     <SubscriptionContext.Provider
       value={{
@@ -147,6 +168,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setIsActive,
         setExpiresAt,
         resetAllFeatureUsage,
+        updateSubscriptionStatus,
       }}
     >
       {children}

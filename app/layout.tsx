@@ -1,17 +1,29 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Playfair_Display, Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProviderFixed as ThemeProvider } from "@/components/theme-provider-fixed"
 import { SubscriptionProvider } from "@/contexts/subscription-context"
-import { BottomNav } from "@/components/bottom-nav"
 import { Toaster } from "@/components/ui/toaster"
 import { HapticProvider } from "@/contexts/haptic-context"
-import { DesktopNav } from "@/components/desktop-nav"
-import { Footer } from "@/components/footer"
 import { AuthProvider } from "@/contexts/auth-context"
+import { MainLayout } from "@/components/layouts/main-layout"
 
-const inter = Inter({ subsets: ["latin"] })
+// Elegant serif font for headings
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-playfair",
+  display: "swap",
+  weight: ["400", "500", "600", "700", "800", "900"],
+})
+
+// Clean, modern sans-serif for body text
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+  weight: ["300", "400", "500", "600", "700"],
+})
 
 export const metadata: Metadata = {
   title: "HeartsHeal♥",
@@ -26,18 +38,13 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="h-full">
-      <body className={`${inter.className} flex min-h-full flex-col`}>
+    <html lang="en" className={`h-full ${playfair.variable} ${inter.variable}`}>
+      <body className={`${inter.className} flex min-h-full flex-col bg-background antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
           <SubscriptionProvider>
             <AuthProvider>
               <HapticProvider>
-                <div className="flex flex-1 flex-col">
-                  <DesktopNav />
-                  <BottomNav />
-                  <main className="flex-1 pb-16 md:pb-0">{children}</main>
-                  <Footer />
-                </div>
+                <MainLayout>{children}</MainLayout>
                 <Toaster />
               </HapticProvider>
             </AuthProvider>

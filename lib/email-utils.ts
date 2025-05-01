@@ -35,9 +35,31 @@ export async function sendSubscriptionConfirmationEmail({
     // Render the React component to HTML
     const html = await renderAsync(emailComponent)
 
+    // IMPORTANT: Use Resend's verified domain for the sender address
+    // In Resend's free tier, you can only send emails from verified domains or to verified email addresses
+    const sender = "HeartHeals <onboarding@resend.dev>"
+
+    // Check if we're in development mode
+    const isDev = process.env.NODE_ENV !== "production"
+
+    // In development, log the email instead of sending it
+    if (isDev) {
+      console.log("📧 Development mode: Email would be sent with the following details:")
+      console.log(`From: ${sender}`)
+      console.log(`To: ${email}`)
+      console.log(`Subject: Your HeartHeals ${subscriptionPlan} Subscription is Active!`)
+      console.log("Email content preview:", html.substring(0, 200) + "...")
+
+      return {
+        success: true,
+        data: { id: "dev-mode-email-id" },
+        devMode: true,
+      }
+    }
+
     // Send the email using Resend
     const { data, error } = await resend.emails.send({
-      from: "HeartHeals <notifications@heartsheals.app>",
+      from: sender,
       to: email,
       subject: `Your HeartHeals ${subscriptionPlan} Subscription is Active!`,
       html: html,
@@ -45,7 +67,12 @@ export async function sendSubscriptionConfirmationEmail({
 
     if (error) {
       console.error("Error sending subscription confirmation email:", error)
-      return { success: false, error }
+      return {
+        success: false,
+        error,
+        errorDetails:
+          "If using Resend's free tier, you can only send emails to verified email addresses or from verified domains.",
+      }
     }
 
     console.log("Subscription confirmation email sent:", data)

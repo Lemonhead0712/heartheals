@@ -104,11 +104,6 @@ export function BottomNav() {
       href: "/app-status",
       icon: Activity,
     },
-    {
-      name: "Premium",
-      href: "/subscription",
-      icon: CreditCard,
-    },
   ]
 
   // Return null for non-mobile, but after all hooks are defined
@@ -161,7 +156,7 @@ export function BottomNav() {
                   </SheetTitle>
                 </SheetHeader>
                 <div className="py-6 flex flex-col space-y-2">
-                  {navItems.map((item) => {
+                  {[...navItems, { name: "Premium", href: "/subscription", icon: CreditCard }].map((item) => {
                     const isActive = pathname === item.href
                     return (
                       <Link
@@ -204,9 +199,9 @@ export function BottomNav() {
       <div className="h-14" />
 
       {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 z-50 w-full h-16 bg-background border-t">
-        <div className="grid h-full grid-cols-5">
-          {navItems.slice(0, 5).map((item) => {
+      <div className="fixed bottom-0 left-0 z-50 w-full h-16 bg-white border-t shadow-sm">
+        <div className="grid h-full grid-cols-5 max-w-md mx-auto">
+          {navItems.map((item) => {
             const isActive = pathname === item.href
 
             return (

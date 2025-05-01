@@ -25,7 +25,7 @@ export function LoadingScreen() {
 
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-pink-50 via-blue-50 to-purple-50 z-50">
-      <Logo size="large" />
+      <Logo size="large" textOverride="HeartsHeal" />
 
       <div className="h-16 mt-8 overflow-hidden">
         <AnimatePresence mode="wait">

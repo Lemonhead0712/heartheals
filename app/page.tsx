@@ -14,7 +14,6 @@ import { QuickEmotionalLog } from "@/components/quick-emotional-log"
 import { EmotionTrendsWidget } from "@/components/emotion-trends-widget"
 import { InspirationalQuote } from "@/components/inspirational-quote"
 import type { EmotionEntry } from "@/utils/emotion-analytics"
-// Add the PageContainer import at the top
 import { PageContainer } from "@/components/page-container"
 
 // Mock data types
@@ -102,51 +101,91 @@ export default function Home() {
     },
   }
 
-  // Helper function to format date
-  const formatDate = (date: Date) => {
-    const now = new Date()
-    const diffTime = Math.abs(now.getTime() - date.getTime())
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-
-    if (diffDays === 0) {
-      return `Today at ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-    } else if (diffDays === 1) {
-      return `Yesterday at ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-    } else {
-      return (
-        date.toLocaleDateString([], { month: "short", day: "numeric" }) +
-        ` at ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-      )
-    }
-  }
-
-  // Helper function to truncate text
-  const truncateText = (text: string, maxLength: number) => {
-    if (text.length <= maxLength) return text
-    return text.substring(0, maxLength) + "..."
-  }
-
   return (
-    <PageContainer>
-      <div className="min-h-screen bg-gradient-to-br from-[#fce4ec] via-[#e0f7fa] to-[#ede7f6] pb-20">
-        <motion.div className="container mx-auto px-4 py-12" variants={container} initial="hidden" animate="show">
+    <div className="min-h-screen bg-gradient-to-br from-[#fce4ec]/80 via-[#e0f7fa]/80 to-[#ede7f6]/80">
+      <PageContainer maxWidth="2xl" className="py-12">
+        <motion.div variants={container} initial="hidden" animate="show">
           {/* Header Section */}
-          <motion.div className="flex flex-col items-center mb-12" variants={item}>
-            <Logo animate={true} size="large" showText={false} />
+          <motion.div className="flex flex-col items-center mb-12 relative" variants={item}>
+            {/* Decorative background elements */}
+            <motion.div
+              className="absolute -top-10 -left-10 w-40 h-40 rounded-full bg-gradient-to-r from-pink-200 to-purple-200 opacity-60 blur-xl"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 0.6 }}
+              transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, repeatType: "reverse" }}
+            />
+            <motion.div
+              className="absolute -bottom-10 -right-10 w-40 h-40 rounded-full bg-gradient-to-r from-blue-200 to-teal-200 opacity-60 blur-xl"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 0.6 }}
+              transition={{ duration: 2.5, repeat: Number.POSITIVE_INFINITY, repeatType: "reverse", delay: 0.5 }}
+            />
 
-            <motion.h1 className="text-3xl font-bold text-purple-800 mt-6 mb-2 text-center" variants={item}>
+            {/* Animated sparkles */}
+            <motion.div
+              className="absolute top-1/4 left-1/4 text-2xl"
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: [0, 1, 0], scale: [0, 1, 0], rotate: 45 }}
+              transition={{ duration: 3, repeat: Number.POSITIVE_INFINITY, repeatDelay: 2 }}
+            >
+              ✨
+            </motion.div>
+            <motion.div
+              className="absolute bottom-1/4 right-1/4 text-2xl"
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: [0, 1, 0], scale: [0, 1, 0], rotate: -45 }}
+              transition={{ duration: 3, repeat: Number.POSITIVE_INFINITY, repeatDelay: 3 }}
+            >
+              ✨
+            </motion.div>
+
+            {/* Enhanced logo with glow effect */}
+            <motion.div
+              className="relative"
+              whileHover={{ scale: 1.05 }}
+              transition={{ type: "spring", stiffness: 400, damping: 10 }}
+            >
+              <motion.div
+                className="absolute inset-0 bg-pink-300 rounded-full blur-xl opacity-40"
+                animate={{ scale: [1, 1.2, 1], opacity: [0.4, 0.6, 0.4] }}
+                transition={{ duration: 3, repeat: Number.POSITIVE_INFINITY, repeatType: "reverse" }}
+              />
+              <Logo animate={true} size="large" showText={false} />
+            </motion.div>
+
+            {/* Enhanced title with gradient text */}
+            <motion.h1
+              className="text-4xl font-bold mt-6 mb-2 text-center bg-clip-text text-transparent bg-gradient-to-r from-purple-600 via-pink-500 to-purple-600 drop-shadow-sm"
+              variants={item}
+              whileHover={{ scale: 1.05 }}
+              transition={{ type: "spring", stiffness: 400, damping: 10 }}
+            >
               HeartsHeal
             </motion.h1>
 
-            <motion.p
-              className="text-lg text-center text-blue-700 max-w-md mx-auto mb-6 italic font-light tracking-wide"
-              variants={item}
-            >
-              A sanctuary for emotional healing, reflection, and personal growth — guiding you gently through your
-              journey of self-discovery and emotional renewal.
-            </motion.p>
+            {/* Enhanced description with animated underline */}
+            <motion.div className="relative">
+              <motion.p
+                className="text-lg text-center text-blue-700 max-w-md mx-auto mb-6 italic font-light tracking-wide"
+                variants={item}
+              >
+                A sanctuary for emotional healing, reflection, and personal growth — guiding you gently through your
+                journey of self-discovery and emotional renewal.
+              </motion.p>
+              <motion.div
+                className="absolute -bottom-2 left-1/2 h-0.5 bg-gradient-to-r from-transparent via-pink-400 to-transparent"
+                initial={{ width: 0, x: "-50%" }}
+                animate={{ width: "80%", x: "-50%" }}
+                transition={{ duration: 1.5, delay: 0.5 }}
+              />
+            </motion.div>
 
-            <motion.div variants={item} className="mt-2">
+            <motion.div
+              variants={item}
+              className="mt-4 relative z-10"
+              whileHover={{ scale: 1.05 }}
+              transition={{ type: "spring", stiffness: 400, damping: 10 }}
+            >
               <SubscriptionStatus />
             </motion.div>
           </motion.div>
@@ -278,7 +317,7 @@ export default function Home() {
             <EmotionTrendsWidget />
           </motion.div>
         </motion.div>
-      </div>
-    </PageContainer>
+      </PageContainer>
+    </div>
   )
 }

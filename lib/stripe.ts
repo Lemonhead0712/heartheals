@@ -27,7 +27,28 @@ export const getPublishableKey = () => {
 // Validate that Stripe is properly configured
 export const validateStripeConfig = async (): Promise<{ isValid: boolean; message?: string }> => {
   try {
-    const stripe = getStripeInstance()
+    // Check if environment variables are set
+    const secretKey = process.env.STRIPE_SECRET_KEY
+    const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+
+    if (!secretKey) {
+      return {
+        isValid: false,
+        message: "Stripe secret key is missing. Please check your environment variables.",
+      }
+    }
+
+    if (!publishableKey) {
+      return {
+        isValid: false,
+        message: "Stripe publishable key is missing. Please check your environment variables.",
+      }
+    }
+
+    // Initialize Stripe with the secret key
+    const stripe = new Stripe(secretKey, {
+      apiVersion: "2023-10-16",
+    })
 
     // Make a simple API call to verify the key works
     await stripe.balance.retrieve()
