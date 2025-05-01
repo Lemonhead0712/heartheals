@@ -9,7 +9,6 @@ import { Toaster } from "@/components/ui/toaster"
 import { HapticProvider } from "@/contexts/haptic-context"
 import { DesktopNav } from "@/components/desktop-nav"
 import { Footer } from "@/components/footer"
-import { SubscriptionTestPanel } from "@/components/subscription-test-panel"
 import { AuthProvider } from "@/contexts/auth-context"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -39,7 +38,6 @@ export default function RootLayout({
                   <main className="flex-1 pb-16 md:pb-0">{children}</main>
                   <Footer />
                 </div>
-                <SubscriptionTestPanel />
                 <Toaster />
               </HapticProvider>
             </AuthProvider>

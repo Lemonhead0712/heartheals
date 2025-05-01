@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { ChevronLeft, Check, Shield, CreditCard, Calendar, Info, X } from "lucide-react"
@@ -14,15 +14,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { useSubscription } from "@/contexts/subscription-context"
 import { SubscriptionStatus } from "@/components/subscription-status"
-import { StripeSubscriptionButton } from "@/components/stripe-subscription-button"
 import { SubscriptionQRCode } from "@/components/subscription-qr-code"
 import { PageContainer } from "@/components/page-container"
 
 export default function SubscriptionPage() {
-  const { tier, isActive, isTestMode } = useSubscription()
+  const { tier, isActive } = useSubscription()
   const [paymentStatus, setPaymentStatus] = useState<"idle" | "processing" | "success" | "error">("idle")
   const [errorMessage, setErrorMessage] = useState("")
   const [paymentMethod, setPaymentMethod] = useState<"card" | "qr" | "manage">("card")
+  const paymentSectionRef = useRef<HTMLDivElement>(null)
 
   // Animation variants
   const container = {
@@ -85,41 +85,7 @@ export default function SubscriptionPage() {
             </div>
           </motion.div>
 
-          {/* Test Mode Toggle - Only visible in development */}
-          {isTestMode && (
-            <motion.div className="mb-6" variants={item}>
-              <Card className="border-yellow-200 bg-yellow-50/80 backdrop-blur-sm">
-                <CardContent className="p-4">
-                  <div className="flex items-center">
-                    <Info className="h-5 w-5 text-yellow-600 mr-2" />
-                    <span className="font-medium text-yellow-800">Test Mode Active</span>
-                  </div>
-                  <p className="text-sm text-yellow-700 mt-1">
-                    This is a test environment. Use the test panel to simulate subscription states.
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
           {/* Payment Status Messages */}
-          {paymentStatus === "success" && (
-            <motion.div
-              className="mb-6"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <Alert className="border-green-200 bg-green-50/80 backdrop-blur-sm">
-                <Check className="h-4 w-4 text-green-600" />
-                <AlertTitle className="text-green-800">Payment Successful!</AlertTitle>
-                <AlertDescription className="text-green-700">
-                  Your subscription has been activated. Thank you for supporting HeartsHeal!
-                </AlertDescription>
-              </Alert>
-            </motion.div>
-          )}
-
           {paymentStatus === "error" && (
             <motion.div
               className="mb-6"
@@ -257,7 +223,13 @@ export default function SubscriptionPage() {
                       Current Plan
                     </Button>
                   ) : (
-                    <Button className="w-full bg-purple-600 hover:bg-purple-700">
+                    <Button
+                      className="w-full bg-purple-600 hover:bg-purple-700"
+                      onClick={() => {
+                        paymentSectionRef.current?.scrollIntoView({ behavior: "smooth" })
+                        setPaymentMethod("card")
+                      }}
+                    >
                       {tier === "premium" && !isActive ? "Reactivate Subscription" : "Upgrade to Premium"}
                     </Button>
                   )}
@@ -269,36 +241,12 @@ export default function SubscriptionPage() {
           {/* Payment Form - Only show if not already premium active */}
           {!(tier === "premium" && isActive) && (
             <motion.div variants={item}>
-              <Card className="border-purple-200 bg-white/90 backdrop-blur-sm shadow-md">
+              <Card className="border-purple-200 bg-white/90 backdrop-blur-sm shadow-md" ref={paymentSectionRef}>
                 <CardHeader>
                   <CardTitle className="text-purple-800">Payment Details</CardTitle>
                   <CardDescription className="text-purple-600">Choose your preferred payment method</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {isTestMode && (
-                    <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                      <h4 className="text-sm font-medium text-blue-800 mb-2">Test Mode Credit Cards</h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                        <div className="flex items-center">
-                          <Badge className="bg-green-100 text-green-800 mr-2">Success</Badge>
-                          <span className="text-blue-700">4242 4242 4242 4242</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Badge className="bg-red-100 text-red-800 mr-2">Declined</Badge>
-                          <span className="text-blue-700">4000 0000 0000 0002</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Badge className="bg-yellow-100 text-yellow-800 mr-2">Auth Required</Badge>
-                          <span className="text-blue-700">4000 0025 0000 3155</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Badge className="bg-purple-100 text-purple-800 mr-2">Any Future Date</Badge>
-                          <span className="text-blue-700">Exp: 12/34, CVC: Any</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
                   <Tabs
                     defaultValue="card"
                     className="w-full"
@@ -355,18 +303,10 @@ export default function SubscriptionPage() {
                     </TabsList>
 
                     <TabsContent value="card">
-                      {isTestMode ? (
-                        <StripeSubscriptionButton
-                          buyButtonId="buy_btn_1RJ8gsPVn60sGdDzjgejmFFT"
-                          publishableKey="pk_test_51RHmIePVn60sGdDzn67iigTSQqtiExeHG8VIJL7FLOTg23xZkU8JiCDfSDXvoHgOo6PgApefFiXCRkHH3UQwDDsP00mYjI9ZAf"
-                        />
-                      ) : (
-                        <PaymentForm
-                          amount={500} // $5.00 in cents
-                          isTestMode={isTestMode}
-                          onPaymentStatusChange={handlePaymentStatusChange}
-                        />
-                      )}
+                      <PaymentForm
+                        amount={500} // $5.00 in cents
+                        onPaymentStatusChange={handlePaymentStatusChange}
+                      />
                     </TabsContent>
 
                     <TabsContent value="qr">

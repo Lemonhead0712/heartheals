@@ -1,90 +1,71 @@
 "use client"
 
-import { type ReactNode, useEffect, useState } from "react"
+import { type ReactNode, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useSubscription } from "@/contexts/subscription-context"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Lock, Sparkles } from "lucide-react"
-import Link from "next/link"
-import { useAuth } from "@/contexts/auth-context"
+import { Lock } from "lucide-react"
 
-type FeatureGateProps = {
-  featureId: string
+interface FeatureGateProps {
   children: ReactNode
-  fallback?: ReactNode
+  featureId: string
+  title?: string
+  description?: string
+  showUpgradeButton?: boolean
 }
 
-export function FeatureGate({ featureId, children, fallback }: FeatureGateProps) {
-  const { canUseFeature, useFeature, tier } = useSubscription()
-  const { requiresLogin } = useAuth()
-  const [hasAccess, setHasAccess] = useState(false)
+export function FeatureGate({
+  children,
+  featureId,
+  title = "Premium Feature",
+  description = "This feature requires a premium subscription.",
+  showUpgradeButton = true,
+}: FeatureGateProps) {
+  const { canUseFeature, useFeature, tier, isActive } = useSubscription()
+  const router = useRouter()
 
-  useEffect(() => {
-    setHasAccess(canUseFeature(featureId))
-  }, [canUseFeature, featureId])
+  // Check if the user can access this feature
+  const canAccess = canUseFeature(featureId)
 
-  // Call useFeature unconditionally
+  // Record usage for free tier users.  Call the hook unconditionally, but only execute its logic if the conditions are met.
   useEffect(() => {
-    if (hasAccess) {
+    if ((tier === "free" && tier === "premium" && isActive) || canAccess) {
       useFeature(featureId)
     }
-  }, [hasAccess, featureId, useFeature])
+  }, [canAccess, featureId, tier, isActive, useFeature])
 
-  // Check if login is required
-  if (requiresLogin()) {
-    return (
-      <Card className="border-purple-200 bg-white/90 backdrop-blur-sm shadow-md">
-        <CardContent className="p-6 flex flex-col items-center text-center">
-          <div className="bg-purple-100 p-4 rounded-full mb-4">
-            <Lock className="h-8 w-8 text-purple-500" />
-          </div>
-          <h3 className="text-xl font-semibold text-purple-700 mb-2">Login Required</h3>
-          <p className="text-purple-600 mb-4">Please log in to access your premium features.</p>
-        </CardContent>
-        <CardFooter className="flex justify-center pb-6">
-          <Button asChild className="bg-purple-600 hover:bg-purple-700">
-            <Link href="/login">
-              <Sparkles className="h-4 w-4 mr-2" />
-              Sign In
-            </Link>
-          </Button>
-        </CardFooter>
-      </Card>
-    )
-  }
-
-  // If user has access, render the children
-  if (hasAccess) {
+  // If the user has premium and it's active, or they can use the feature, show the content
+  if ((tier === "premium" && isActive) || canAccess) {
     return <>{children}</>
   }
 
-  // If a fallback is provided, render it
-  if (fallback) {
-    return <>{fallback}</>
-  }
-
-  // Default fallback is a locked feature card
+  // Otherwise, show the upgrade prompt
   return (
     <Card className="border-purple-200 bg-white/90 backdrop-blur-sm shadow-md">
-      <CardContent className="p-6 flex flex-col items-center text-center">
-        <div className="bg-purple-100 p-4 rounded-full mb-4">
-          <Lock className="h-8 w-8 text-purple-500" />
-        </div>
-        <h3 className="text-xl font-semibold text-purple-700 mb-2">Premium Feature</h3>
-        <p className="text-purple-600 mb-4">
-          {tier === "premium"
-            ? "Your premium subscription is inactive. Please renew to access this feature."
-            : "This feature requires a premium subscription."}
+      <CardHeader className="text-center">
+        <CardTitle className="text-purple-800 flex items-center justify-center">
+          <Lock className="h-5 w-5 mr-2 text-purple-600" />
+          {title}
+        </CardTitle>
+        <CardDescription className="text-purple-600">{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-center text-gray-600 mb-4">
+          {tier === "free" ? (
+            <>You've reached the usage limit for this feature in the free tier.</>
+          ) : (
+            <>Upgrade to HeartHeals Premium to unlock unlimited access to this feature.</>
+          )}
         </p>
       </CardContent>
-      <CardFooter className="flex justify-center pb-6">
-        <Button asChild className="bg-purple-600 hover:bg-purple-700">
-          <Link href="/subscription">
-            <Sparkles className="h-4 w-4 mr-2" />
-            {tier === "premium" ? "Renew Subscription" : "Upgrade to Premium"}
-          </Link>
-        </Button>
-      </CardFooter>
+      {showUpgradeButton && (
+        <CardFooter className="flex justify-center">
+          <Button onClick={() => router.push("/subscription")} className="bg-purple-600 hover:bg-purple-700 text-white">
+            Upgrade to Premium
+          </Button>
+        </CardFooter>
+      )}
     </Card>
   )
 }

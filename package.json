@@ -62,7 +62,11 @@
     "@stripe/stripe-js": "latest",
     "framer-motion": "latest",
     "stripe": "latest",
-    "@stripe/react-stripe-js": "latest"
+    "canvas-confetti": "latest",
+    "@stripe/react-stripe-js": "latest",
+    "@react-email/components": "latest",
+    "resend": "latest",
+    "@react-email/render": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

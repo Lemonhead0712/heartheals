@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { useRouter, usePathname } from "next/navigation"
 import { useSubscription } from "./subscription-context"
 
 type User = {
@@ -13,9 +14,11 @@ type AuthContextType = {
   user: User | null
   isLoading: boolean
   isAuthenticated: boolean
-  login: (email: string, password: string) => Promise<boolean>
+  login: (email: string, password: string, redirectTo?: string) => Promise<boolean>
   logout: () => void
   requiresLogin: () => boolean
+  setIntendedDestination: (path: string) => void
+  getIntendedDestination: () => string | null
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -23,7 +26,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [intendedDestination, setIntendedDestination] = useState<string | null>(null)
   const { tier, isActive } = useSubscription()
+  const router = useRouter()
+  const pathname = usePathname()
 
   // Check if user is already logged in on mount
   useEffect(() => {
@@ -44,8 +50,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth()
   }, [])
 
+  // Store intended destination when redirecting to login
+  useEffect(() => {
+    // If we're not on the login page and not authenticated, store current path
+    if (pathname !== "/login" && !user && !isLoading) {
+      // Only store paths that might require authentication
+      if (pathname.includes("/premium") || pathname.includes("/profile")) {
+        localStorage.setItem("heartsHeal_intendedDestination", pathname)
+      }
+    }
+  }, [pathname, user, isLoading])
+
   // Mock login function - in a real app, this would call an API
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string, redirectTo?: string): Promise<boolean> => {
     try {
       setIsLoading(true)
 
@@ -72,6 +89,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Update state
       setUser(newUser)
+
+      // Handle redirect after successful login
+      setTimeout(() => {
+        // Check for explicit redirect destination first
+        if (redirectTo) {
+          router.push(redirectTo)
+        } else {
+          // Check for stored intended destination
+          const storedDestination = localStorage.getItem("heartsHeal_intendedDestination")
+          if (storedDestination) {
+            localStorage.removeItem("heartsHeal_intendedDestination")
+            router.push(storedDestination)
+          } else {
+            // Default redirect to home
+            router.push("/")
+          }
+        }
+      }, 100) // Small timeout to ensure state updates before redirect
+
       return true
     } catch (error) {
       console.error("Login error:", error)
@@ -84,11 +120,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     localStorage.removeItem("heartsHeal_user")
     setUser(null)
+    // Redirect to home page after logout
+    router.push("/")
   }
 
   // Function to determine if login is required based on subscription status
   const requiresLogin = () => {
     return tier === "premium" && isActive && !user
+  }
+
+  // Helper functions for managing intended destination
+  const setIntendedDestinationHelper = (path: string) => {
+    localStorage.setItem("heartsHeal_intendedDestination", path)
+    setIntendedDestination(path)
+  }
+
+  const getIntendedDestination = () => {
+    const stored = localStorage.getItem("heartsHeal_intendedDestination")
+    return stored || intendedDestination
   }
 
   return (
@@ -100,6 +149,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         requiresLogin,
+        setIntendedDestination: setIntendedDestinationHelper,
+        getIntendedDestination,
       }}
     >
       {children}

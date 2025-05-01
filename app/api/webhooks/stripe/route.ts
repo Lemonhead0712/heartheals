@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
+import { sendSubscriptionConfirmationEmail } from "@/lib/email-utils"
 
 // Initialize Stripe with the secret key from environment variables
 const getStripeInstance = () => {
@@ -74,8 +75,41 @@ export async function POST(request: Request) {
 
 // Webhook event handlers
 async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
-  // In a real app, you would update your database to record the new subscription
   console.log(`Subscription created: ${subscription.id}`)
+
+  try {
+    // Get customer details to send confirmation email
+    const stripe = getStripeInstance()
+    const customerId = subscription.customer as string
+
+    const customer = await stripe.customers.retrieve(customerId)
+
+    if (customer && !customer.deleted) {
+      const email = customer.email
+      const name = customer.name
+
+      if (email) {
+        // Get subscription plan details
+        const priceId = subscription.items.data[0]?.price.id
+        const price = priceId ? await stripe.prices.retrieve(priceId) : null
+        const productId = price?.product as string
+        const product = productId ? await stripe.products.retrieve(productId) : null
+
+        const planName = product?.name || "Premium"
+        const amount = price ? `$${(price.unit_amount! / 100).toFixed(2)}` : "$5.00"
+
+        // Send confirmation email
+        await sendSubscriptionConfirmationEmail({
+          email,
+          userName: name || "Valued User",
+          subscriptionPlan: planName,
+          amount: `${amount} / month`,
+        })
+      }
+    }
+  } catch (error) {
+    console.error("Error sending subscription confirmation email:", error)
+  }
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
@@ -91,6 +125,24 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   // In a real app, you would update your database to record the successful payment
   console.log(`Invoice payment succeeded: ${invoice.id}`)
+
+  // If this is a subscription invoice, we might want to send a receipt
+  if (invoice.subscription) {
+    try {
+      const stripe = getStripeInstance()
+      const customerId = invoice.customer as string
+
+      const customer = await stripe.customers.retrieve(customerId)
+
+      if (customer && !customer.deleted && customer.email) {
+        // Here you could send a payment receipt email
+        // This is different from the subscription confirmation
+        console.log(`Could send payment receipt to ${customer.email}`)
+      }
+    } catch (error) {
+      console.error("Error processing invoice payment success:", error)
+    }
+  }
 }
 
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {

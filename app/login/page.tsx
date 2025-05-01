@@ -2,8 +2,8 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -21,8 +21,23 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [redirectTarget, setRedirectTarget] = useState<string | null>(null)
   const router = useRouter()
-  const { login } = useAuth()
+  const { login, getIntendedDestination } = useAuth()
+  const searchParams = useSearchParams()
+
+  // Check for redirect parameter in URL or stored intended destination
+  useEffect(() => {
+    const redirectParam = searchParams.get("redirect")
+    if (redirectParam) {
+      setRedirectTarget(redirectParam)
+    } else {
+      const intended = getIntendedDestination()
+      if (intended) {
+        setRedirectTarget(intended)
+      }
+    }
+  }, [searchParams, getIntendedDestination])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,12 +45,11 @@ export default function LoginPage() {
     setIsSubmitting(true)
 
     try {
-      const success = await login(email, password)
-      if (success) {
-        router.push("/")
-      } else {
+      const success = await login(email, password, redirectTarget || undefined)
+      if (!success) {
         setError("Invalid email or password. Please try again.")
       }
+      // No need to handle redirect here as it's now managed in the auth context
     } catch (err) {
       setError("An unexpected error occurred. Please try again.")
       console.error(err)
@@ -74,6 +88,7 @@ export default function LoginPage() {
                 <CardTitle className="text-2xl font-bold text-center text-purple-800">Welcome Back</CardTitle>
                 <CardDescription className="text-center text-purple-600">
                   Sign in to access your premium features
+                  {redirectTarget && <span className="block mt-1 text-xs">You'll be redirected after login</span>}
                 </CardDescription>
               </CardHeader>
               <CardContent>
