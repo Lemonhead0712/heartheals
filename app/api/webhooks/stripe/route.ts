@@ -1,19 +1,13 @@
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
 
-// Initialize Stripe with secret keys
-const getStripeInstance = (isTestMode: boolean) => {
-  // In a real app, you would use environment variables for these keys
-  const testKey = "sk_test_51NxXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-  const liveKey = "sk_live_51NxXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-  return new Stripe(isTestMode ? testKey : liveKey, {
-    apiVersion: "2023-10-16",
-  })
-}
+// Initialize Stripe with secret key from environment variable
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
+  apiVersion: "2023-10-16",
+})
 
-// Webhook secrets
-const testWebhookSecret = "whsec_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-const liveWebhookSecret = "whsec_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+// Webhook secret from environment variable
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || ""
 
 export async function POST(request: Request) {
   const body = await request.text()
@@ -22,12 +16,6 @@ export async function POST(request: Request) {
   let event: Stripe.Event
 
   try {
-    // Determine if the webhook is from test mode or live mode
-    // In a real app, you might inspect the event or use separate webhook endpoints
-    const isTestMode = true
-    const stripe = getStripeInstance(isTestMode)
-    const webhookSecret = isTestMode ? testWebhookSecret : liveWebhookSecret
-
     // Verify the webhook signature
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
   } catch (err) {

@@ -61,8 +61,8 @@
     "@emotion/is-prop-valid": "latest",
     "@stripe/stripe-js": "latest",
     "framer-motion": "latest",
-    "@stripe/react-stripe-js": "latest",
-    "stripe": "latest"
+    "stripe": "latest",
+    "@stripe/react-stripe-js": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

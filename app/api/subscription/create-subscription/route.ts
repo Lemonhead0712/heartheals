@@ -1,26 +1,19 @@
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
 
-// Initialize Stripe with secret keys
-const getStripeInstance = (isTestMode: boolean) => {
-  // In a real app, you would use environment variables for these keys
-  const testKey = "sk_test_51NxXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-  const liveKey = "sk_live_51NxXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-  return new Stripe(isTestMode ? testKey : liveKey, {
-    apiVersion: "2023-10-16",
-  })
-}
+// Initialize Stripe with secret key from environment variable
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
+  apiVersion: "2023-10-16",
+})
 
 export async function POST(request: Request) {
   try {
-    const { customerId, priceId, isTestMode } = await request.json()
+    const { customerId, priceId } = await request.json()
 
     // Validate required fields
     if (!customerId || !priceId) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
-
-    const stripe = getStripeInstance(isTestMode)
 
     // Create the subscription
     const subscription = await stripe.subscriptions.create({

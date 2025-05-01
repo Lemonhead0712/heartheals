@@ -2,59 +2,51 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useStripe, useElements, PaymentElement, Elements } from "@stripe/react-stripe-js"
 import { loadStripe } from "@stripe/stripe-js"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
 
-// Initialize Stripe with publishable keys
-const getStripePromise = (isTestMode: boolean) => {
-  // In a real app, you would use environment variables for these keys
-  const testKey = "pk_test_51NxXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-  const liveKey = "pk_live_51NxXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-  return loadStripe(isTestMode ? testKey : liveKey)
-}
+// Initialize Stripe with publishable key from environment variable
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "")
 
 type PaymentFormWrapperProps = {
   amount: number
-  isTestMode: boolean
   onPaymentStatusChange: (status: "idle" | "processing" | "success" | "error", message?: string) => void
 }
 
-export function PaymentForm({ amount, isTestMode, onPaymentStatusChange }: PaymentFormWrapperProps) {
+export function PaymentForm({ amount, onPaymentStatusChange }: PaymentFormWrapperProps) {
   const [clientSecret, setClientSecret] = useState<string | null>(null)
 
   // Fetch the client secret when the component mounts
-  const fetchPaymentIntent = async () => {
-    try {
-      const response = await fetch("/api/subscription/create-payment-intent", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          amount,
-          isTestMode,
-        }),
-      })
+  useEffect(() => {
+    const fetchPaymentIntent = async () => {
+      try {
+        const response = await fetch("/api/subscription/create-payment-intent", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            amount,
+          }),
+        })
 
-      if (!response.ok) {
-        throw new Error("Failed to create payment intent")
+        if (!response.ok) {
+          throw new Error("Failed to create payment intent")
+        }
+
+        const data = await response.json()
+        setClientSecret(data.clientSecret)
+      } catch (error) {
+        console.error("Error creating payment intent:", error)
+        onPaymentStatusChange("error", "Failed to initialize payment. Please try again.")
       }
-
-      const data = await response.json()
-      setClientSecret(data.clientSecret)
-    } catch (error) {
-      console.error("Error creating payment intent:", error)
-      onPaymentStatusChange("error", "Failed to initialize payment. Please try again.")
     }
-  }
 
-  // Fetch the client secret on component mount
-  useState(() => {
     fetchPaymentIntent()
-  })
+  }, [amount, onPaymentStatusChange])
 
   // If we don't have a client secret yet, show a loading state
   if (!clientSecret) {
@@ -69,7 +61,7 @@ export function PaymentForm({ amount, isTestMode, onPaymentStatusChange }: Payme
   // Once we have the client secret, render the Stripe Elements form
   return (
     <Elements
-      stripe={getStripePromise(isTestMode)}
+      stripe={stripePromise}
       options={{
         clientSecret,
         appearance: {
