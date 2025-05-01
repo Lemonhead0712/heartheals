@@ -89,14 +89,14 @@ export function QuickEmotionalLog() {
         <CardDescription className="text-pink-600">How are you feeling right now?</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex flex-col items-center mb-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="flex flex-col items-center mb-2 -mt-1">
             <EmojiPicker selectedEmoji={selectedEmoji} onEmojiSelect={setSelectedEmoji} />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <label className="text-sm font-medium text-pink-700">I'm feeling...</label>
-            <div className="flex flex-wrap gap-2 mb-2">
+            <div className="flex flex-wrap gap-1.5 mb-2">
               {commonEmotions.map((e) => (
                 <HapticButton
                   key={e}
@@ -123,7 +123,7 @@ export function QuickEmotionalLog() {
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <label className="text-sm font-medium text-pink-700 flex justify-between">
               <span>Intensity: {intensity}/10</span>
             </label>
@@ -142,17 +142,17 @@ export function QuickEmotionalLog() {
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <label className="text-sm font-medium text-pink-700">Notes (optional)</label>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Add any thoughts or reflections..."
-              className="min-h-[80px] border-pink-200 focus-visible:ring-pink-500"
+              className="min-h-[70px] border-pink-200 focus-visible:ring-pink-500"
             />
           </div>
 
-          <div className="flex justify-between pt-2">
+          <div className="flex justify-between pt-1">
             <HapticButton
               type="submit"
               className="bg-pink-600 hover:bg-pink-700"

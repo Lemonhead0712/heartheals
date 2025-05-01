@@ -7,7 +7,7 @@ interface PageContainerProps {
   className?: string
   fullWidth?: boolean
   withAuth?: boolean
-  maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl" | "full"
+  maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "full"
   centered?: boolean
   withGutter?: boolean
 }
@@ -17,7 +17,7 @@ export function PageContainer({
   className,
   fullWidth = false,
   withAuth = true,
-  maxWidth = "2xl",
+  maxWidth = "3xl",
   centered = false,
   withGutter = true,
 }: PageContainerProps) {
@@ -27,6 +27,7 @@ export function PageContainer({
     lg: "max-w-screen-lg",
     xl: "max-w-screen-xl",
     "2xl": "max-w-screen-2xl",
+    "3xl": "max-w-[1920px]", // Custom wider max-width
     full: "max-w-full",
   }
 
@@ -36,7 +37,7 @@ export function PageContainer({
         "w-full",
         !fullWidth && maxWidthClasses[maxWidth],
         !fullWidth && centered && "mx-auto",
-        withGutter && "px-4 sm:px-6 md:px-8",
+        withGutter && "px-2 sm:px-3 md:px-4 lg:px-6",
         className,
       )}
     >

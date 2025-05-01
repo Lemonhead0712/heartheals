@@ -68,13 +68,13 @@ export function DesktopNav({ scrolled = false }: DesktopNavProps) {
   if (isMobile) return null
 
   return (
-    <PageContainer fullWidth withAuth={false} className="py-3" withGutter={false}>
-      <div className="flex items-center justify-between px-8">
+    <PageContainer fullWidth withAuth={false} className="py-2" withGutter={false} maxWidth="3xl">
+      <div className="flex items-center justify-between px-4 lg:px-6">
         <Link href="/" className="flex items-center space-x-2">
           <Logo size="small" showText={true} />
         </Link>
 
-        <div className="flex items-center space-x-6">
+        <div className="flex items-center space-x-4">
           {/* Navigation items */}
           <nav className="flex items-center space-x-1">
             {navItems.map((item) => {
@@ -86,7 +86,7 @@ export function DesktopNav({ scrolled = false }: DesktopNavProps) {
                   href={item.href}
                   onClick={handleNavItemClick}
                   className={cn(
-                    "flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                    "flex items-center space-x-1 px-2 py-1.5 rounded-md text-sm font-medium transition-colors",
                     isActive
                       ? "text-purple-700 bg-purple-50"
                       : "text-gray-600 hover:text-purple-600 hover:bg-purple-50/50",
@@ -101,7 +101,7 @@ export function DesktopNav({ scrolled = false }: DesktopNavProps) {
 
           {/* Auth button */}
           {user ? (
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               <Link
                 href="/profile"
                 className="flex items-center space-x-2 text-sm text-purple-700 hover:text-purple-800 transition-colors"

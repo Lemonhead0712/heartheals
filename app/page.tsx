@@ -103,10 +103,10 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#fce4ec]/80 via-[#e0f7fa]/80 to-[#ede7f6]/80">
-      <PageContainer maxWidth="2xl" className="py-12">
+      <PageContainer maxWidth="3xl" className="py-6 md:py-8">
         <motion.div variants={container} initial="hidden" animate="show">
           {/* Header Section */}
-          <motion.div className="flex flex-col items-center mb-12 relative" variants={item}>
+          <motion.div className="flex flex-col items-center mb-8 relative" variants={item}>
             {/* Decorative background elements */}
             <motion.div
               className="absolute -top-10 -left-10 w-40 h-40 rounded-full bg-gradient-to-r from-pink-200 to-purple-200 opacity-60 blur-xl"
@@ -155,7 +155,7 @@ export default function Home() {
 
             {/* Enhanced title with gradient text */}
             <motion.h1
-              className="text-4xl font-bold mt-6 mb-2 text-center bg-clip-text text-transparent bg-gradient-to-r from-purple-600 via-pink-500 to-purple-600 drop-shadow-sm"
+              className="text-4xl font-bold mt-4 mb-2 text-center bg-clip-text text-transparent bg-gradient-to-r from-purple-600 via-pink-500 to-purple-600 drop-shadow-sm"
               variants={item}
               whileHover={{ scale: 1.05 }}
               transition={{ type: "spring", stiffness: 400, damping: 10 }}
@@ -166,7 +166,7 @@ export default function Home() {
             {/* Enhanced description with animated underline */}
             <motion.div className="relative">
               <motion.p
-                className="text-lg text-center text-blue-700 max-w-md mx-auto mb-6 italic font-light tracking-wide"
+                className="text-lg text-center text-blue-700 max-w-md mx-auto mb-4 italic font-light tracking-wide"
                 variants={item}
               >
                 A sanctuary for emotional healing, reflection, and personal growth — guiding you gently through your
@@ -182,7 +182,7 @@ export default function Home() {
 
             <motion.div
               variants={item}
-              className="mt-4 relative z-10"
+              className="mt-3 relative z-10"
               whileHover={{ scale: 1.05 }}
               transition={{ type: "spring", stiffness: 400, damping: 10 }}
             >
@@ -191,17 +191,17 @@ export default function Home() {
           </motion.div>
 
           {/* Welcome Banner for First-Time Users */}
-          <motion.div className="mb-12" variants={item}>
+          <motion.div className="mb-8" variants={item}>
             <WelcomeBanner />
           </motion.div>
 
           {/* Main Feature Cards */}
-          <motion.div className="mb-12" variants={item}>
-            <motion.h2 className="text-2xl font-semibold text-purple-800 mb-6 text-center" variants={item}>
+          <motion.div className="mb-8" variants={item}>
+            <motion.h2 className="text-2xl font-semibold text-purple-800 mb-4 text-center" variants={item}>
               Explore Features
             </motion.h2>
             <motion.div
-              className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
               variants={container}
               initial="hidden"
               animate="show"
@@ -209,8 +209,8 @@ export default function Home() {
               <motion.div variants={item} className="flex">
                 <Link href="/emotional-log" className="block w-full">
                   <Card className="h-full border-pink-200 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 flex flex-col">
-                    <CardContent className="p-6 flex flex-col items-center text-center flex-grow">
-                      <Clipboard className="w-12 h-12 text-pink-500 mb-4" />
+                    <CardContent className="p-4 sm:p-5 flex flex-col items-center text-center flex-grow">
+                      <Clipboard className="w-10 h-10 text-pink-500 mb-3" />
                       <h3 className="text-xl font-semibold text-pink-700 mb-2">Emotional State Log</h3>
                       <p className="text-pink-600 flex-grow">
                         Gently capture how you're feeling today and watch your healing unfold.
@@ -233,8 +233,8 @@ export default function Home() {
               <motion.div variants={item} className="flex">
                 <Link href="/breathe" className="block w-full">
                   <Card className="h-full border-blue-200 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 flex flex-col">
-                    <CardContent className="p-6 flex flex-col items-center text-center flex-grow">
-                      <Wind className="w-12 h-12 text-blue-500 mb-4" />
+                    <CardContent className="p-4 sm:p-5 flex flex-col items-center text-center flex-grow">
+                      <Wind className="w-10 h-10 text-blue-500 mb-3" />
                       <h3 className="text-xl font-semibold text-blue-700 mb-2">Breathe With Me</h3>
                       <p className="text-blue-600 flex-grow">
                         Follow calming patterns and let soft animation guide your breath.
@@ -254,11 +254,11 @@ export default function Home() {
                 </Link>
               </motion.div>
 
-              <motion.div variants={item} className="flex">
+              <motion.div variants={item} className="flex sm:col-span-2 lg:col-span-1">
                 <Link href="/thoughts" className="block w-full">
                   <Card className="h-full border-purple-200 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 flex flex-col">
-                    <CardContent className="p-6 flex flex-col items-center text-center flex-grow">
-                      <BookHeart className="w-12 h-12 text-purple-500 mb-4" />
+                    <CardContent className="p-4 sm:p-5 flex flex-col items-center text-center flex-grow">
+                      <BookHeart className="w-10 h-10 text-purple-500 mb-3" />
                       <h3 className="text-xl font-semibold text-purple-700 mb-2">Emotional Thoughts</h3>
                       <p className="text-purple-600 flex-grow">
                         Journal your feelings and gain insights through reflective exercises
@@ -281,17 +281,17 @@ export default function Home() {
           </motion.div>
 
           {/* Inspirational Quote */}
-          <motion.div className="mb-12" variants={item}>
+          <motion.div className="mb-8" variants={item}>
             <InspirationalQuote />
           </motion.div>
 
           {/* New Sections: Snapshots and Quick Emotional Log */}
-          <motion.div className="mb-12" variants={item}>
-            <motion.h2 className="text-2xl font-semibold text-purple-800 mb-6 text-center" variants={item}>
+          <motion.div className="mb-8" variants={item}>
+            <motion.h2 className="text-2xl font-semibold text-purple-800 mb-4 text-center" variants={item}>
               Your Wellness Dashboard
             </motion.h2>
             <motion.div
-              className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto"
+              className="grid grid-cols-1 lg:grid-cols-2 gap-6"
               variants={container}
               initial="hidden"
               animate="show"
@@ -313,7 +313,7 @@ export default function Home() {
           </motion.div>
 
           {/* Emotional Trends Widget */}
-          <motion.div className="max-w-5xl mx-auto" variants={item} initial="hidden" animate="show">
+          <motion.div variants={item} initial="hidden" animate="show">
             <EmotionTrendsWidget />
           </motion.div>
         </motion.div>

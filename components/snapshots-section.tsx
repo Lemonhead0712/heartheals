@@ -102,22 +102,22 @@ export function SnapshotsSection() {
             <span className="sr-only">Refresh</span>
           </Button>
         </CardHeader>
-        <CardContent className="flex flex-col items-center text-center p-6">
-          <div className="bg-purple-50 rounded-full p-4 mb-4">
+        <CardContent className="flex flex-col items-center text-center p-4">
+          <div className="bg-purple-50 rounded-full p-3 mb-3">
             <TrendingUp className="h-8 w-8 text-purple-500" />
           </div>
           <h3 className="text-lg font-medium text-purple-700 mb-2">No snapshots yet</h3>
-          <p className="text-purple-600 mb-4">Take a self-compassion quiz to start tracking your progress over time.</p>
-          <Button asChild className="bg-purple-600 hover:bg-purple-700 mb-6">
+          <p className="text-purple-600 mb-3">Take a self-compassion quiz to start tracking your progress over time.</p>
+          <Button asChild className="bg-purple-600 hover:bg-purple-700 mb-4">
             <Link href="/thoughts?tab=quizzes">
               Take Your First Quiz
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
 
-          <div className="w-full border-t border-purple-100 pt-4 mt-2">
+          <div className="w-full border-t border-purple-100 pt-3 mt-1">
             <h4 className="text-sm font-medium text-purple-700 mb-2">Available Quiz Types:</h4>
-            <ul className="text-sm text-purple-600 space-y-2 text-left">
+            <ul className="text-sm text-purple-600 space-y-1.5 text-left">
               <li className="flex items-start">
                 <div className="mr-2 mt-1 h-1.5 w-1.5 rounded-full bg-purple-400 flex-shrink-0"></div>
                 <span>
@@ -162,7 +162,7 @@ export function SnapshotsSection() {
           <span className="sr-only">Refresh</span>
         </Button>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 px-4 pb-4 pt-2">
         {/* Chart showing progress over time */}
         {chartData.length > 1 && (
           <div className="h-[200px] w-full mb-4">

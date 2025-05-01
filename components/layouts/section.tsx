@@ -9,6 +9,7 @@ interface SectionProps {
   description?: string
   fullWidth?: boolean
   centered?: boolean
+  spacing?: "none" | "sm" | "md" | "lg"
 }
 
 export function Section({
@@ -19,13 +20,21 @@ export function Section({
   description,
   fullWidth = false,
   centered = false,
+  spacing = "md",
 }: SectionProps) {
+  const spacingClasses = {
+    none: "py-0",
+    sm: "py-4 md:py-6",
+    md: "py-6 md:py-8",
+    lg: "py-8 md:py-12",
+  }
+
   return (
-    <section id={id} className={cn("py-8 md:py-12", className)}>
+    <section id={id} className={cn(spacingClasses[spacing], className)}>
       {(title || description) && (
-        <div className={cn("mb-8", centered && "text-center")}>
-          {title && <h2 className="text-3xl font-bold tracking-tight text-foreground mb-3">{title}</h2>}
-          {description && <p className="text-lg text-muted-foreground max-w-3xl">{description}</p>}
+        <div className={cn("mb-6", centered && "text-center")}>
+          {title && <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground mb-2">{title}</h2>}
+          {description && <p className="text-base md:text-lg text-muted-foreground max-w-3xl">{description}</p>}
         </div>
       )}
       <div className={cn(fullWidth ? "w-full" : "container", centered && "mx-auto")}>{children}</div>

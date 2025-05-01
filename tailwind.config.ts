@@ -13,9 +13,18 @@ const config = {
   theme: {
     container: {
       center: true,
-      padding: "2rem",
+      padding: {
+        DEFAULT: "1rem",
+        sm: "1.5rem",
+        md: "2rem",
+      },
       screens: {
-        "2xl": "1400px",
+        sm: "640px",
+        md: "768px",
+        lg: "1024px",
+        xl: "1280px",
+        "2xl": "1536px",
+        "3xl": "1920px",
       },
     },
     extend: {
@@ -152,6 +161,14 @@ const config = {
         wide: ".0125em",
         wider: ".025em",
         widest: ".05em",
+      },
+      spacing: {
+        "4.5": "1.125rem",
+        "5.5": "1.375rem",
+      },
+      maxWidth: {
+        "8xl": "88rem",
+        "9xl": "96rem",
       },
     },
   },

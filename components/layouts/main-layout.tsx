@@ -43,7 +43,7 @@ export function MainLayout({ children }: MainLayoutProps) {
 
       <BottomNav />
 
-      <main className={cn("flex-1 pt-16 pb-16 md:pb-0", isFullWidthPage ? "" : "px-4 md:px-6 lg:px-8")}>
+      <main className={cn("flex-1 pt-16 pb-16 md:pb-0", isFullWidthPage ? "" : "px-2 sm:px-3 md:px-4")}>
         {children}
       </main>
 

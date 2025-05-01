@@ -93,7 +93,7 @@
     -webkit-tap-highlight-color: transparent;
     font-family: var(--font-inter);
     font-weight: 400;
-    line-height: 1.65;
+    line-height: 1.6;
     letter-spacing: -0.011em;
   }
 
@@ -108,19 +108,19 @@
     font-weight: 700;
     line-height: 1.2;
     letter-spacing: -0.022em;
-    margin-top: 0.5em;
-    margin-bottom: 0.5em;
+    margin-top: 0.4em;
+    margin-bottom: 0.4em;
   }
 
   /* Specific heading sizes and styles */
   h1 {
-    font-size: 2.5rem;
+    font-size: 2.25rem;
     font-weight: 800;
     letter-spacing: -0.03em;
   }
 
   h2 {
-    font-size: 2rem;
+    font-size: 1.875rem;
     font-weight: 700;
   }
 
@@ -146,9 +146,9 @@
 
   /* Paragraph styling */
   p {
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
     font-weight: 400;
-    max-width: 65ch;
+    max-width: 70ch;
   }
 
   /* Refined link styling */
@@ -172,11 +172,11 @@
   ul,
   ol {
     padding-left: 1.5rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
   }
 
   li {
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.4rem;
   }
 
   /* Card title styling */
@@ -190,7 +190,7 @@
     font-family: var(--font-playfair);
     font-weight: 700;
     font-size: 1.75rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.25rem;
   }
 
   /* Page title styling */
@@ -198,7 +198,7 @@
     font-family: var(--font-playfair);
     font-weight: 800;
     font-size: 2.25rem;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
   }
 
   /* Fix for iOS Safari bottom bar */
@@ -331,4 +331,28 @@
 
 .tracking-widest {
   letter-spacing: 0.1em;
+}
+
+/* Optimized card spacing */
+.card-compact .card-header {
+  padding: 1rem 1rem 0.5rem;
+}
+
+.card-compact .card-content {
+  padding: 0.5rem 1rem;
+}
+
+.card-compact .card-footer {
+  padding: 0.5rem 1rem 1rem;
+}
+
+/* Responsive spacing utilities */
+@media (max-width: 640px) {
+  .sm\:space-y-compact > * + * {
+    margin-top: 0.75rem;
+  }
+
+  .sm\:p-compact {
+    padding: 0.75rem;
+  }
 }
