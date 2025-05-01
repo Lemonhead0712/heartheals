@@ -44,45 +44,51 @@ const nextConfig = {
   webpack: (config, { dev, isServer }) => {
     // Only apply obfuscation in production and for client bundles
     if (!dev && !isServer) {
-      const JavaScriptObfuscator = require('javascript-obfuscator');
-      const WebpackObfuscator = require('webpack-obfuscator');
-      const TerserPlugin = require('terser-webpack-plugin');
-      
-      // Add the JavaScript Obfuscator plugin
-      config.optimization.minimizer.push(
-        new WebpackObfuscator({
-          compact: true,
-          controlFlowFlattening: false, // Can cause performance issues if true
-          deadCodeInjection: false, // Can increase bundle size if true
-          debugProtection: false,
-          debugProtectionInterval: 0,
-          disableConsoleOutput: true,
-          identifierNamesGenerator: 'hexadecimal',
-          log: false,
-          numbersToExpressions: false,
-          renameGlobals: false,
-          selfDefending: false,
-          simplify: true,
-          splitStrings: false,
-          stringArray: true,
-          stringArrayCallsTransform: false,
-          stringArrayIndexShift: true,
-          stringArrayRotate: true,
-          stringArrayShuffle: true,
-          stringArrayWrappersCount: 1,
-          stringArrayWrappersChainedCalls: true,
-          stringArrayWrappersParametersMaxCount: 2,
-          stringArrayWrappersType: 'variable',
-          stringArrayThreshold: 0.75,
-          unicodeEscapeSequence: false
-        }, [])
-      );
+      // Enable tree shaking
+      config.optimization.usedExports = true;
       
       // Add Terser with custom configuration for better minification
       config.optimization.minimize = true;
       
-      // Enable tree shaking
-      config.optimization.usedExports = true;
+      // Try to use obfuscation if packages are available
+      try {
+        // Check if the obfuscator packages are available
+        const WebpackObfuscator = require('webpack-obfuscator');
+        
+        // Add the JavaScript Obfuscator plugin if available
+        config.optimization.minimizer.push(
+          new WebpackObfuscator({
+            compact: true,
+            controlFlowFlattening: false, // Can cause performance issues if true
+            deadCodeInjection: false, // Can increase bundle size if true
+            debugProtection: false,
+            debugProtectionInterval: 0,
+            disableConsoleOutput: true,
+            identifierNamesGenerator: 'hexadecimal',
+            log: false,
+            numbersToExpressions: false,
+            renameGlobals: false,
+            selfDefending: false,
+            simplify: true,
+            splitStrings: false,
+            stringArray: true,
+            stringArrayCallsTransform: false,
+            stringArrayIndexShift: true,
+            stringArrayRotate: true,
+            stringArrayShuffle: true,
+            stringArrayWrappersCount: 1,
+            stringArrayWrappersChainedCalls: true,
+            stringArrayWrappersParametersMaxCount: 2,
+            stringArrayWrappersType: 'variable',
+            stringArrayThreshold: 0.75,
+            unicodeEscapeSequence: false
+          }, [])
+        );
+        console.log('Code obfuscation enabled');
+      } catch (error) {
+        console.warn('Code obfuscation disabled: Required packages not found');
+        console.warn('To enable code obfuscation, install: npm install --save-dev javascript-obfuscator webpack-obfuscator');
+      }
       
       // Implement module/nomodule pattern
       config.output.environment = {
