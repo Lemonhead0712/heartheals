@@ -10,22 +10,14 @@ export function Logo({
   showText = true,
 }: {
   className?: string
-  size?: "xsmall" | "small" | "medium" | "large"
+  size?: "small" | "medium" | "large"
   animate?: boolean
   showText?: boolean
 }) {
   const sizes = {
-    xsmall: { width: 24, height: 24 },
     small: { width: 32, height: 32 },
     medium: { width: 80, height: 80 },
     large: { width: 120, height: 120 },
-  }
-
-  const textSizes = {
-    xsmall: "text-xs",
-    small: "text-sm",
-    medium: "text-xl",
-    large: "text-2xl",
   }
 
   const logoComponent = animate ? (
@@ -62,7 +54,15 @@ export function Logo({
   return (
     <div className={`flex flex-col items-center ${className}`}>
       {logoComponent}
-      {showText && <h2 className={`font-semibold text-purple-700 mt-1 ${textSizes[size]}`}>HeartHeals</h2>}
+      {showText && (
+        <h2
+          className={`font-semibold text-purple-700 mt-1 ${
+            size === "small" ? "text-sm" : size === "medium" ? "text-xl" : "text-2xl"
+          }`}
+        >
+          HeartHeals
+        </h2>
+      )}
     </div>
   )
 }

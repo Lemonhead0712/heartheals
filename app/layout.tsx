@@ -10,7 +10,7 @@ import { HapticProvider } from "@/contexts/haptic-context"
 import { DesktopNav } from "@/components/desktop-nav"
 import { Footer } from "@/components/footer"
 import { SubscriptionTestPanel } from "@/components/subscription-test-panel"
-import { SwipeNavigationTutorial } from "@/components/swipe-navigation-tutorial"
+import { AuthProvider } from "@/contexts/auth-context"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -31,17 +31,18 @@ export default function RootLayout({
       <body className={`${inter.className} flex min-h-full flex-col`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
           <SubscriptionProvider>
-            <HapticProvider>
-              <div className="flex flex-1 flex-col">
-                <DesktopNav />
-                {children}
-                <Footer />
-              </div>
-              <BottomNav />
-              <SubscriptionTestPanel />
-              <SwipeNavigationTutorial />
-              <Toaster />
-            </HapticProvider>
+            <AuthProvider>
+              <HapticProvider>
+                <div className="flex flex-1 flex-col">
+                  <DesktopNav />
+                  <BottomNav />
+                  <main className="flex-1 pb-16 md:pb-0">{children}</main>
+                  <Footer />
+                </div>
+                <SubscriptionTestPanel />
+                <Toaster />
+              </HapticProvider>
+            </AuthProvider>
           </SubscriptionProvider>
         </ThemeProvider>
       </body>

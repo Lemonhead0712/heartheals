@@ -8,12 +8,17 @@ import { Logo } from "./logo"
 import { cn } from "@/lib/utils"
 import { useSubscription } from "@/contexts/subscription-context"
 import { useHapticContext } from "@/contexts/haptic-context"
+import { useAuth } from "@/contexts/auth-context"
+import { Button } from "@/components/ui/button"
+import { useMobile } from "@/hooks/use-mobile"
 
 export function DesktopNav() {
+  const { user, logout } = useAuth()
   const pathname = usePathname()
   const { tier, isActive } = useSubscription()
   const [scrolled, setScrolled] = useState(false)
   const { haptic, settings } = useHapticContext()
+  const isMobile = useMobile()
 
   // Handle scroll effect for the header
   useEffect(() => {
@@ -64,22 +69,25 @@ export function DesktopNav() {
     },
   ]
 
+  // Only render on desktop
+  if (isMobile) return null
+
   return (
     <>
       <header
         className={cn(
-          "fixed top-0 left-0 right-0 z-50 transition-all duration-300 hidden md:block",
-          scrolled ? "bg-white/90 backdrop-blur-md shadow-sm" : "bg-transparent",
+          "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
+          scrolled ? "bg-white/90 backdrop-blur-md shadow-sm" : "bg-white/80 backdrop-blur-sm",
         )}
       >
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <Link href="/" className="flex items-center space-x-2">
             <Logo size="small" showText={true} />
           </Link>
 
-          {/* Desktop Navigation - Hidden on mobile */}
-          <div className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 hidden md:block">
-            <nav className="hidden md:flex items-center space-x-1">
+          <div className="flex items-center space-x-6">
+            {/* Navigation items */}
+            <nav className="flex items-center space-x-1">
               {navItems.map((item) => {
                 const isActive = pathname === item.href
 
@@ -101,12 +109,36 @@ export function DesktopNav() {
                 )
               })}
             </nav>
+
+            {/* Auth button */}
+            {user ? (
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-purple-700">Hello, {user.name || user.email}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                  onClick={logout}
+                >
+                  Sign Out
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                asChild
+              >
+                <Link href="/login">Sign In</Link>
+              </Button>
+            )}
           </div>
         </div>
       </header>
 
       {/* Spacer to prevent content from being hidden under the fixed header */}
-      <div className="h-16" />
+      <div className="h-16 md:block hidden" />
     </>
   )
 }

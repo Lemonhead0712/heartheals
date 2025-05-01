@@ -39,10 +39,6 @@
     --chart-2: 340 82% 52%;
     --chart-3: 199 98% 48%;
     --chart-4: 162 47% 50%;
-
-    /* Navigation colors */
-    --nav-active: 271 76% 53%;
-    --nav-hover: 271 76% 53%;
   }
 
   .dark {
@@ -79,10 +75,6 @@
     --chart-2: 340 82% 62%;
     --chart-3: 199 98% 58%;
     --chart-4: 162 47% 60%;
-
-    /* Navigation colors - dark mode */
-    --nav-active: 271 76% 63%;
-    --nav-hover: 271 76% 63%;
   }
 }
 
@@ -173,53 +165,4 @@
 .scrollbar-hide {
   -ms-overflow-style: none; /* IE and Edge */
   scrollbar-width: none; /* Firefox */
-}
-
-/* Mobile header spacing */
-@media (max-width: 768px) {
-  body {
-    padding-top: 56px; /* Adjust based on your header height */
-  }
-
-  /* Add extra padding at the bottom to account for the navigation bar */
-  main {
-    padding-bottom: 80px;
-  }
-}
-
-/* Navigation link hover effects */
-.nav-link {
-  position: relative;
-  transition: all 0.2s ease;
-}
-
-.nav-link:after {
-  content: "";
-  position: absolute;
-  width: 0;
-  height: 2px;
-  bottom: -2px;
-  left: 0;
-  background-color: theme("colors.purple.700");
-  transition: width 0.3s ease;
-}
-
-.nav-link:hover:after,
-.nav-link.active:after {
-  width: 100%;
-}
-
-/* Consistent header styling */
-.header-container {
-  @apply backdrop-blur-md bg-white/95 shadow-sm;
-}
-
-/* Consistent active state for navigation items */
-.nav-item-active {
-  @apply text-purple-700 bg-purple-50;
-}
-
-/* Consistent hover state for navigation items */
-.nav-item-hover {
-  @apply hover:text-purple-600 hover:bg-purple-50/50;
 }

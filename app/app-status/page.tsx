@@ -1,19 +1,17 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList } from "@/components/ui/tabs"
-import { ChevronLeft, AlertTriangle, RefreshCw } from "lucide-react"
+import { ChevronLeft, AlertTriangle } from "lucide-react"
 import { motion } from "framer-motion"
 import { Logo } from "@/components/logo"
 import { AppStatusDashboard } from "@/components/app-status-dashboard"
 import { HapticSettings } from "@/components/haptic-settings"
 import { PageContainer } from "@/components/page-container"
 import { HapticTabsTrigger } from "@/components/ui/haptic-tabs"
-import { Progress } from "@/components/ui/progress"
-import { SelectiveResetDialog } from "@/components/selective-reset-dialog"
 import {
   Dialog,
   DialogContent,
@@ -25,41 +23,17 @@ import {
 } from "@/components/ui/dialog"
 import { useSubscription } from "@/contexts/subscription-context"
 import { useHaptic } from "@/hooks/use-haptic"
-import { resetApplication, type ResetProgress } from "@/utils/reset-utils"
 
 export default function AppStatusPage() {
   const [activeTab, setActiveTab] = useState("dashboard")
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
   const [isCancelled, setIsCancelled] = useState(false)
-  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false)
-  const [isResetting, setIsResetting] = useState(false)
-  const [resetProgress, setResetProgress] = useState<ResetProgress>({
-    step: "",
-    progress: 0,
-    isComplete: false,
-  })
-  const [resetError, setResetError] = useState<string | null>(null)
-  const [isResetComplete, setIsResetComplete] = useState(false)
   const { tier, isActive } = useSubscription()
-  const { haptic, patternHaptic } = useHaptic()
-
-  // Reset the progress state when dialog closes
-  useEffect(() => {
-    if (!isResetConfirmOpen) {
-      setTimeout(() => {
-        setResetProgress({
-          step: "",
-          progress: 0,
-          isComplete: false,
-        })
-        setResetError(null)
-      }, 300)
-    }
-  }, [isResetConfirmOpen])
+  const { triggerHaptic } = useHaptic()
 
   const handleCancelSubscription = async () => {
-    haptic("medium")
+    triggerHaptic("medium")
     setIsCancelling(true)
 
     // Simulate API call to cancel subscription
@@ -74,52 +48,6 @@ export default function AppStatusPage() {
       // Reset state after dialog closes
       setTimeout(() => setIsCancelled(false), 300)
     }, 2000)
-  }
-
-  const handleResetApplication = async () => {
-    setIsResetting(true)
-    setResetError(null)
-    patternHaptic("warning")
-
-    try {
-      const result = await resetApplication((progress) => {
-        setResetProgress(progress)
-
-        // Provide haptic feedback at key points
-        if (progress.progress === 100) {
-          patternHaptic("success")
-        } else if (progress.progress % 25 === 0) {
-          haptic("light")
-        }
-      })
-
-      if (result.success) {
-        setIsResetComplete(true)
-
-        // Close dialog after showing success message
-        setTimeout(() => {
-          setIsResetConfirmOpen(false)
-
-          // Reset state after dialog closes
-          setTimeout(() => {
-            setIsResetting(false)
-            setIsResetComplete(false)
-
-            // Reload the page to reflect reset state
-            window.location.reload()
-          }, 300)
-        }, 2000)
-      } else {
-        setResetError(result.error || "An unknown error occurred")
-        setIsResetting(false)
-        patternHaptic("error")
-      }
-    } catch (error) {
-      console.error("Error resetting application:", error)
-      setResetError("An unexpected error occurred. Please try again.")
-      setIsResetting(false)
-      patternHaptic("error")
-    }
   }
 
   // Animation variants
@@ -231,7 +159,7 @@ export default function AppStatusPage() {
                             variant="destructive"
                             className="w-full"
                             disabled={!(tier === "premium" && isActive)}
-                            onClick={() => haptic("light")}
+                            onClick={() => triggerHaptic("light")}
                           >
                             Cancel Subscription
                           </Button>
@@ -328,120 +256,9 @@ export default function AppStatusPage() {
                     <p className="text-sm text-muted-foreground mb-4">
                       This will clear all your saved preferences, entries, and local data. This action cannot be undone.
                     </p>
-                    <Dialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="destructive"
-                          className="w-full"
-                          onClick={() => {
-                            haptic("medium")
-                            setResetProgress({
-                              step: "",
-                              progress: 0,
-                              isComplete: false,
-                            })
-                          }}
-                        >
-                          Reset Application
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                          <DialogTitle className="flex items-center">
-                            <AlertTriangle className="h-5 w-5 text-amber-500 mr-2" />
-                            Reset Application?
-                          </DialogTitle>
-                          <DialogDescription>
-                            Are you sure you want to reset the application? This will clear all your data.
-                          </DialogDescription>
-                        </DialogHeader>
-
-                        {!isResetComplete ? (
-                          <>
-                            <div className="py-4">
-                              <div className="rounded-md bg-amber-50 p-4 mb-4">
-                                <div className="flex">
-                                  <div className="text-amber-800">
-                                    <p className="text-sm font-medium">What happens when you reset:</p>
-                                    <ul className="mt-2 text-sm list-disc pl-5 space-y-1">
-                                      <li>All your saved emotional logs will be deleted</li>
-                                      <li>Your breathing exercise history will be cleared</li>
-                                      <li>All app settings will return to defaults</li>
-                                      <li>Your subscription status will not be affected</li>
-                                      <li>All cached data will be cleared</li>
-                                    </ul>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {isResetting && (
-                                <div className="mt-4 space-y-2">
-                                  <div className="flex justify-between text-sm">
-                                    <span>{resetProgress.step}</span>
-                                    <span>{resetProgress.progress}%</span>
-                                  </div>
-                                  <Progress value={resetProgress.progress} className="h-2" />
-                                </div>
-                              )}
-
-                              {resetError && (
-                                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
-                                  <p className="font-medium">Error during reset:</p>
-                                  <p>{resetError}</p>
-                                  <p className="mt-1">Please try again or contact support if the issue persists.</p>
-                                </div>
-                              )}
-                            </div>
-
-                            <DialogFooter className="flex sm:justify-between">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setIsResetConfirmOpen(false)}
-                                disabled={isResetting}
-                              >
-                                Cancel
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                onClick={handleResetApplication}
-                                disabled={isResetting}
-                              >
-                                {isResetting ? (
-                                  <>
-                                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                    Resetting...
-                                  </>
-                                ) : (
-                                  "Yes, Reset Everything"
-                                )}
-                              </Button>
-                            </DialogFooter>
-                          </>
-                        ) : (
-                          <div className="py-6 text-center">
-                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 mb-4">
-                              <svg
-                                className="h-6 w-6 text-green-600"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                            </div>
-                            <h3 className="text-lg font-medium text-gray-900">Reset Complete</h3>
-                            <p className="mt-2 text-sm text-gray-500">
-                              Your application has been reset successfully. The page will reload momentarily.
-                            </p>
-                          </div>
-                        )}
-                      </DialogContent>
-                    </Dialog>
-
-                    {/* Selective Reset Option */}
-                    <SelectiveResetDialog onComplete={() => window.location.reload()} />
+                    <Button variant="destructive" className="w-full">
+                      Reset Application
+                    </Button>
                   </CardContent>
                 </Card>
               </TabsContent>

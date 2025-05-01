@@ -1,32 +1,39 @@
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
 
-// Initialize Stripe with secret keys
-const getStripeInstance = (isTestMode: boolean) => {
-  // In a real app, you would use environment variables for these keys
-  const testKey = "sk_test_51NxXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-  const liveKey = "sk_live_51NxXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-  return new Stripe(isTestMode ? testKey : liveKey, {
+// Initialize Stripe with the secret key from environment variables
+const getStripeInstance = () => {
+  const secretKey = process.env.STRIPE_SECRET_KEY
+
+  if (!secretKey) {
+    throw new Error("Stripe secret key is missing")
+  }
+
+  return new Stripe(secretKey, {
     apiVersion: "2023-10-16",
   })
 }
-
-// Webhook secrets
-const testWebhookSecret = "whsec_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-const liveWebhookSecret = "whsec_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
 export async function POST(request: Request) {
   const body = await request.text()
   const signature = request.headers.get("stripe-signature") as string
 
+  if (!signature) {
+    return NextResponse.json({ error: "Missing Stripe signature" }, { status: 400 })
+  }
+
+  // Get webhook secret from environment variables
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+  if (!webhookSecret) {
+    console.error("Stripe webhook secret is missing")
+    return NextResponse.json({ error: "Webhook configuration error" }, { status: 500 })
+  }
+
   let event: Stripe.Event
 
   try {
-    // Determine if the webhook is from test mode or live mode
-    // In a real app, you might inspect the event or use separate webhook endpoints
-    const isTestMode = true
-    const stripe = getStripeInstance(isTestMode)
-    const webhookSecret = isTestMode ? testWebhookSecret : liveWebhookSecret
+    // Get Stripe instance
+    const stripe = getStripeInstance()
 
     // Verify the webhook signature
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret)

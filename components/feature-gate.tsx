@@ -1,11 +1,12 @@
 "use client"
 
-import { type ReactNode, useEffect } from "react"
+import { type ReactNode, useEffect, useState } from "react"
 import { useSubscription } from "@/contexts/subscription-context"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Lock, Sparkles } from "lucide-react"
 import Link from "next/link"
+import { useAuth } from "@/contexts/auth-context"
 
 type FeatureGateProps = {
   featureId: string
@@ -15,8 +16,12 @@ type FeatureGateProps = {
 
 export function FeatureGate({ featureId, children, fallback }: FeatureGateProps) {
   const { canUseFeature, useFeature, tier } = useSubscription()
+  const { requiresLogin } = useAuth()
+  const [hasAccess, setHasAccess] = useState(false)
 
-  const hasAccess = canUseFeature(featureId)
+  useEffect(() => {
+    setHasAccess(canUseFeature(featureId))
+  }, [canUseFeature, featureId])
 
   // Call useFeature unconditionally
   useEffect(() => {
@@ -24,6 +29,29 @@ export function FeatureGate({ featureId, children, fallback }: FeatureGateProps)
       useFeature(featureId)
     }
   }, [hasAccess, featureId, useFeature])
+
+  // Check if login is required
+  if (requiresLogin()) {
+    return (
+      <Card className="border-purple-200 bg-white/90 backdrop-blur-sm shadow-md">
+        <CardContent className="p-6 flex flex-col items-center text-center">
+          <div className="bg-purple-100 p-4 rounded-full mb-4">
+            <Lock className="h-8 w-8 text-purple-500" />
+          </div>
+          <h3 className="text-xl font-semibold text-purple-700 mb-2">Login Required</h3>
+          <p className="text-purple-600 mb-4">Please log in to access your premium features.</p>
+        </CardContent>
+        <CardFooter className="flex justify-center pb-6">
+          <Button asChild className="bg-purple-600 hover:bg-purple-700">
+            <Link href="/login">
+              <Sparkles className="h-4 w-4 mr-2" />
+              Sign In
+            </Link>
+          </Button>
+        </CardFooter>
+      </Card>
+    )
+  }
 
   // If user has access, render the children
   if (hasAccess) {

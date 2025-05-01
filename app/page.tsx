@@ -128,7 +128,7 @@ export default function Home() {
 
   return (
     <PageContainer>
-      <div className="min-h-screen bg-gradient-to-br from-[#fce4ec] via-[#e0f7fa] to-[#ede7f6] pb-20 pt-4 md:pt-0">
+      <div className="min-h-screen bg-gradient-to-br from-[#fce4ec] via-[#e0f7fa] to-[#ede7f6] pb-20">
         <motion.div className="container mx-auto px-4 py-12" variants={container} initial="hidden" animate="show">
           {/* Header Section */}
           <motion.div className="flex flex-col items-center mb-12" variants={item}>

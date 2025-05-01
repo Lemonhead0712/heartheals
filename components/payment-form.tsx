@@ -2,62 +2,73 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useStripe, useElements, PaymentElement, Elements } from "@stripe/react-stripe-js"
 import { loadStripe } from "@stripe/stripe-js"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
 
-// Initialize Stripe with publishable keys
-const getStripePromise = (isTestMode: boolean) => {
-  // In a real app, you would use environment variables for these keys
-  const testKey = "pk_test_51NxXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-  const liveKey = "pk_live_51NxXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-  return loadStripe(isTestMode ? testKey : liveKey)
+// Initialize Stripe with publishable key from environment variables
+const getStripePromise = () => {
+  // Use the environment variable for the publishable key
+  const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+
+  if (!publishableKey) {
+    console.error("Stripe publishable key is missing")
+    return null
+  }
+
+  return loadStripe(publishableKey)
 }
 
 type PaymentFormWrapperProps = {
   amount: number
-  isTestMode: boolean
   onPaymentStatusChange: (status: "idle" | "processing" | "success" | "error", message?: string) => void
 }
 
-export function PaymentForm({ amount, isTestMode, onPaymentStatusChange }: PaymentFormWrapperProps) {
+export function PaymentForm({ amount, onPaymentStatusChange }: PaymentFormWrapperProps) {
   const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   // Fetch the client secret when the component mounts
-  const fetchPaymentIntent = async () => {
-    try {
-      const response = await fetch("/api/subscription/create-payment-intent", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          amount,
-          isTestMode,
-        }),
-      })
+  useEffect(() => {
+    const fetchPaymentIntent = async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
 
-      if (!response.ok) {
-        throw new Error("Failed to create payment intent")
+        const response = await fetch("/api/subscription/create-payment-intent", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            amount,
+          }),
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to create payment intent")
+        }
+
+        setClientSecret(data.clientSecret)
+      } catch (error) {
+        console.error("Error creating payment intent:", error)
+        setError(error instanceof Error ? error.message : "An unknown error occurred")
+        onPaymentStatusChange("error", error instanceof Error ? error.message : "Failed to initialize payment")
+      } finally {
+        setIsLoading(false)
       }
-
-      const data = await response.json()
-      setClientSecret(data.clientSecret)
-    } catch (error) {
-      console.error("Error creating payment intent:", error)
-      onPaymentStatusChange("error", "Failed to initialize payment. Please try again.")
     }
-  }
 
-  // Fetch the client secret on component mount
-  useState(() => {
     fetchPaymentIntent()
-  })
+  }, [amount, onPaymentStatusChange])
 
-  // If we don't have a client secret yet, show a loading state
-  if (!clientSecret) {
+  // If we're still loading, show a loading state
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center p-8">
         <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
@@ -66,10 +77,49 @@ export function PaymentForm({ amount, isTestMode, onPaymentStatusChange }: Payme
     )
   }
 
+  // If there was an error, show an error message
+  if (error) {
+    return (
+      <div className="p-6 text-center">
+        <div className="text-red-500 mb-4">
+          <p className="font-semibold">Payment initialization failed</p>
+          <p className="text-sm mt-1">{error}</p>
+        </div>
+        <Button onClick={() => window.location.reload()} variant="outline" className="mt-2">
+          Try Again
+        </Button>
+      </div>
+    )
+  }
+
+  // If we don't have a client secret yet, show a message
+  if (!clientSecret) {
+    return (
+      <div className="p-6 text-center">
+        <p className="text-gray-500">Unable to initialize payment system.</p>
+        <Button onClick={() => window.location.reload()} variant="outline" className="mt-4">
+          Try Again
+        </Button>
+      </div>
+    )
+  }
+
+  const stripePromise = getStripePromise()
+
+  // If we couldn't initialize Stripe, show an error
+  if (!stripePromise) {
+    return (
+      <div className="p-6 text-center">
+        <p className="text-red-500">Payment system configuration error.</p>
+        <p className="text-sm mt-1">Please contact support.</p>
+      </div>
+    )
+  }
+
   // Once we have the client secret, render the Stripe Elements form
   return (
     <Elements
-      stripe={getStripePromise(isTestMode)}
+      stripe={stripePromise}
       options={{
         clientSecret,
         appearance: {
