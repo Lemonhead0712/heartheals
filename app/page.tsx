@@ -1,44 +1,21 @@
 "use client"
-
-import { useState, useEffect, Suspense } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { BookHeart, Clipboard, Wind } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { Badge } from "@/components/ui/badge"
+import { WelcomeBanner } from "@/components/welcome-banner"
 import { useSubscription } from "@/contexts/subscription-context"
 import { SubscriptionStatus } from "@/components/subscription-status"
-import { createDynamicComponent } from "@/components/dynamic-import"
-import { PageContainer } from "@/components/page-container"
+import { SnapshotsSection } from "@/components/snapshots-section"
+import { QuickEmotionalLog } from "@/components/quick-emotional-log"
+import { EmotionTrendsWidget } from "@/components/emotion-trends-widget"
+import { InspirationalQuote } from "@/components/inspirational-quote"
 import type { EmotionEntry } from "@/utils/emotion-analytics"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
-
-// Dynamically import heavy components
-const WelcomeBanner = createDynamicComponent(
-  () => import("@/components/welcome-banner").then((mod) => ({ default: mod.WelcomeBanner })),
-  "WelcomeBanner",
-)
-
-const SnapshotsSection = createDynamicComponent(
-  () => import("@/components/snapshots-section").then((mod) => ({ default: mod.SnapshotsSection })),
-  "SnapshotsSection",
-)
-
-const QuickEmotionalLog = createDynamicComponent(
-  () => import("@/components/quick-emotional-log").then((mod) => ({ default: mod.QuickEmotionalLog })),
-  "QuickEmotionalLog",
-)
-
-const EmotionTrendsWidget = createDynamicComponent(
-  () => import("@/components/emotion-trends-widget").then((mod) => ({ default: mod.EmotionTrendsWidget })),
-  "EmotionTrendsWidget",
-)
-
-const InspirationalQuote = createDynamicComponent(
-  () => import("@/components/inspirational-quote").then((mod) => ({ default: mod.InspirationalQuote })),
-  "InspirationalQuote",
-)
+// Add the PageContainer import at the top
+import { PageContainer } from "@/components/page-container"
 
 // Mock data types
 type JournalEntry = {
@@ -55,60 +32,50 @@ export default function Home() {
   // Mock data for demonstration
   const [recentEmotions, setRecentEmotions] = useState<EmotionEntry[]>([])
   const [recentJournals, setRecentJournals] = useState<JournalEntry[]>([])
-  const [isLoading, setIsLoading] = useState(true)
 
   // Load real data from localStorage
   useEffect(() => {
-    // Simulate network delay for demonstration
-    const timer = setTimeout(() => {
-      // Load emotion entries
-      try {
-        const storedEmotions = localStorage.getItem("heartsHeal_emotionLogs")
-        if (storedEmotions) {
-          const parsedEmotions = JSON.parse(storedEmotions)
-          // Convert string timestamps back to Date objects
-          const processedEmotions = parsedEmotions.map((entry: any) => ({
-            ...entry,
-            timestamp: new Date(entry.timestamp),
-          }))
-          // Sort by timestamp (newest first) and take the first 3
-          const sortedEmotions = processedEmotions
-            .sort(
-              (a: EmotionEntry, b: EmotionEntry) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-            )
-            .slice(0, 3)
+    // Load emotion entries
+    try {
+      const storedEmotions = localStorage.getItem("heartsHeal_emotionLogs")
+      if (storedEmotions) {
+        const parsedEmotions = JSON.parse(storedEmotions)
+        // Convert string timestamps back to Date objects
+        const processedEmotions = parsedEmotions.map((entry: any) => ({
+          ...entry,
+          timestamp: new Date(entry.timestamp),
+        }))
+        // Sort by timestamp (newest first) and take the first 3
+        const sortedEmotions = processedEmotions
+          .sort((a: EmotionEntry, b: EmotionEntry) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+          .slice(0, 3)
 
-          setRecentEmotions(sortedEmotions)
-        }
-      } catch (error) {
-        console.error("Error loading emotion logs:", error)
+        setRecentEmotions(sortedEmotions)
       }
+    } catch (error) {
+      console.error("Error loading emotion logs:", error)
+    }
 
-      // Load journal entries
-      try {
-        const storedJournals = localStorage.getItem("heartsHeal_journalEntries")
-        if (storedJournals) {
-          const parsedJournals = JSON.parse(storedJournals)
-          // Convert string dates back to Date objects
-          const processedJournals = parsedJournals.map((entry: any) => ({
-            ...entry,
-            date: new Date(entry.date),
-          }))
-          // Sort by date (newest first) and take the first 2
-          const sortedJournals = processedJournals
-            .sort((a: JournalEntry, b: JournalEntry) => new Date(b.date).getTime() - new Date(a.date).getTime())
-            .slice(0, 2)
+    // Load journal entries
+    try {
+      const storedJournals = localStorage.getItem("heartsHeal_journalEntries")
+      if (storedJournals) {
+        const parsedJournals = JSON.parse(storedJournals)
+        // Convert string dates back to Date objects
+        const processedJournals = parsedJournals.map((entry: any) => ({
+          ...entry,
+          date: new Date(entry.date),
+        }))
+        // Sort by date (newest first) and take the first 2
+        const sortedJournals = processedJournals
+          .sort((a: JournalEntry, b: JournalEntry) => new Date(b.date).getTime() - new Date(a.date).getTime())
+          .slice(0, 2)
 
-          setRecentJournals(sortedJournals)
-        }
-      } catch (error) {
-        console.error("Error loading journal entries:", error)
+        setRecentJournals(sortedJournals)
       }
-
-      setIsLoading(false)
-    }, 500)
-
-    return () => clearTimeout(timer)
+    } catch (error) {
+      console.error("Error loading journal entries:", error)
+    }
   }, [])
 
   // Staggered animation variants
@@ -186,15 +153,7 @@ export default function Home() {
 
           {/* Welcome Banner for First-Time Users */}
           <motion.div className="mb-12" variants={item}>
-            <Suspense
-              fallback={
-                <div className="h-32 flex items-center justify-center">
-                  <LoadingSpinner size="medium" />
-                </div>
-              }
-            >
-              <WelcomeBanner />
-            </Suspense>
+            <WelcomeBanner />
           </motion.div>
 
           {/* Main Feature Cards */}
@@ -284,15 +243,7 @@ export default function Home() {
 
           {/* Inspirational Quote */}
           <motion.div className="mb-12" variants={item}>
-            <Suspense
-              fallback={
-                <div className="h-24 flex items-center justify-center">
-                  <LoadingSpinner size="small" />
-                </div>
-              }
-            >
-              <InspirationalQuote />
-            </Suspense>
+            <InspirationalQuote />
           </motion.div>
 
           {/* New Sections: Snapshots and Quick Emotional Log */}
@@ -309,30 +260,14 @@ export default function Home() {
               {/* Snapshots Section */}
               <motion.div variants={item} className="flex">
                 <div className="w-full">
-                  <Suspense
-                    fallback={
-                      <div className="h-64 flex items-center justify-center">
-                        <LoadingSpinner size="medium" />
-                      </div>
-                    }
-                  >
-                    <SnapshotsSection />
-                  </Suspense>
+                  <SnapshotsSection />
                 </div>
               </motion.div>
 
               {/* Quick Emotional Log */}
               <motion.div variants={item} className="flex">
                 <div className="w-full">
-                  <Suspense
-                    fallback={
-                      <div className="h-64 flex items-center justify-center">
-                        <LoadingSpinner size="medium" />
-                      </div>
-                    }
-                  >
-                    <QuickEmotionalLog />
-                  </Suspense>
+                  <QuickEmotionalLog />
                 </div>
               </motion.div>
             </motion.div>
@@ -340,15 +275,7 @@ export default function Home() {
 
           {/* Emotional Trends Widget */}
           <motion.div className="max-w-5xl mx-auto" variants={item} initial="hidden" animate="show">
-            <Suspense
-              fallback={
-                <div className="h-64 flex items-center justify-center">
-                  <LoadingSpinner size="medium" />
-                </div>
-              }
-            >
-              <EmotionTrendsWidget />
-            </Suspense>
+            <EmotionTrendsWidget />
           </motion.div>
         </motion.div>
       </div>

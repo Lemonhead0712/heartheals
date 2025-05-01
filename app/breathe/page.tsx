@@ -53,11 +53,11 @@ const breathingPatterns: BreathingPattern[] = [
     description: "Equal duration for all phases. Great for focus and calm.",
     instructions: [
       "Sit comfortably with your back straight",
-      "Watch the circular waves expand as you inhale slowly through your nose",
-      "When the waves pause, hold your breath",
-      "Watch the waves contract as you exhale slowly through your mouth",
-      "When the waves pause again, hold your breath",
-      "Follow this rhythm for the entire session",
+      "Inhale slowly through your nose for 4 seconds",
+      "Hold your breath for 4 seconds",
+      "Exhale slowly through your mouth for 4 seconds",
+      "Hold your breath for 4 seconds",
+      "Repeat the cycle",
     ],
     inhale: 4,
     hold1: 4,
@@ -75,10 +75,11 @@ const breathingPatterns: BreathingPattern[] = [
     instructions: [
       "Sit with your back straight",
       "Place the tip of your tongue against the ridge behind your upper front teeth",
-      "Watch the waves expand as you inhale quietly through your nose for 4 seconds",
-      "When the waves pause, hold your breath for 7 seconds",
-      "Watch the waves contract as you exhale completely through your mouth for 8 seconds",
-      "Follow this rhythm for the entire session",
+      "Exhale completely through your mouth, making a whoosh sound",
+      "Close your mouth and inhale quietly through your nose for 4 seconds",
+      "Hold your breath for 7 seconds",
+      "Exhale completely through your mouth for 8 seconds",
+      "Repeat the cycle",
     ],
     inhale: 4,
     hold1: 7,
@@ -94,10 +95,10 @@ const breathingPatterns: BreathingPattern[] = [
     description: "Slow inhale and longer exhale to activate the parasympathetic nervous system.",
     instructions: [
       "Find a comfortable position",
-      "Watch the waves expand as you inhale slowly through your nose for 4 seconds",
-      "Watch the waves contract as you exhale slowly through your mouth for 6 seconds",
-      "Focus on the sensation of your breath matching the wave animation",
-      "Follow this rhythm for the entire session",
+      "Inhale slowly through your nose for 4 seconds",
+      "Exhale slowly through your mouth for 6 seconds",
+      "Focus on the sensation of your breath",
+      "Repeat the cycle",
     ],
     inhale: 4,
     exhale: 6,
@@ -112,13 +113,13 @@ const breathingPatterns: BreathingPattern[] = [
     description: "Traditional yogic breathing technique that balances the hemispheres of the brain.",
     instructions: [
       "Sit comfortably with your back straight",
-      "Watch the left side waves expand as you close your right nostril with your thumb",
-      "Inhale slowly through your left nostril as the waves expand",
+      "Use your right thumb to close your right nostril",
+      "Inhale slowly through your left nostril",
       "Close your left nostril with your ring finger",
-      "Watch the right side waves expand as you exhale through your right nostril",
-      "Inhale through your right nostril as the waves expand",
+      "Open your right nostril and exhale",
+      "Inhale through your right nostril",
       "Close your right nostril and exhale through your left",
-      "Follow the visual wave guidance throughout the session",
+      "Repeat the cycle",
     ],
     inhale: 4,
     exhale: 4,
@@ -138,10 +139,10 @@ const breathingPatterns: BreathingPattern[] = [
     description: "Equal inhale and exhale at a rate of 5 breaths per minute.",
     instructions: [
       "Sit or lie down comfortably",
-      "Watch the waves expand as you breathe in slowly through your nose for 6 seconds",
-      "Watch the waves contract as you breathe out slowly through your nose for 6 seconds",
+      "Breathe in slowly through your nose for 6 seconds",
+      "Breathe out slowly through your nose for 6 seconds",
       "Continue this pattern without holding your breath",
-      "Focus on smooth, continuous breathing matching the wave animation",
+      "Focus on smooth, continuous breathing",
     ],
     inhale: 6,
     exhale: 6,
@@ -162,10 +163,9 @@ const breathingPatterns: BreathingPattern[] = [
     instructions: [
       "Lie on your back with knees bent or sit comfortably",
       "Place one hand on your chest and the other on your abdomen",
-      "Watch the waves expand as you inhale slowly through your nose, feeling your abdomen rise",
-      "Watch the waves contract as you exhale slowly through pursed lips, feeling your abdomen fall",
+      "Breathe in slowly through your nose, feeling your abdomen rise",
+      "Exhale slowly through pursed lips, feeling your abdomen fall",
       "The hand on your chest should remain relatively still",
-      "Follow the wave animation throughout the session",
     ],
     inhale: 4,
     exhale: 6,
@@ -219,8 +219,16 @@ export default function BreathePage() {
 
   // Phase transition sounds
   const playPhaseTransitionSound = (nextPhase: BreathingPhase) => {
-    // Function kept for compatibility but sounds removed
-    // No sound will be played during phase transitions
+    if (!soundEnabled) return
+
+    // Simple beeps for phase transitions
+    if (nextPhase === "inhale" || nextPhase === "leftNostril" || nextPhase === "rightNostril") {
+      createBeepSound(700, 150, 0.4)()
+    } else if (nextPhase === "hold1" || nextPhase === "hold2") {
+      createBeepSound(500, 150, 0.3)()
+    } else if (nextPhase === "exhale") {
+      createBeepSound(400, 150, 0.3)()
+    }
   }
 
   // Play counter sound based on selected type
@@ -468,17 +476,17 @@ export default function BreathePage() {
 
     switch (phase) {
       case "inhale":
-        return "Breathe in slowly through your nose as the waves expand"
+        return "Breathe in slowly through your nose"
       case "hold1":
-        return "Hold your breath as the waves remain still"
+        return "Hold your breath"
       case "exhale":
-        return "Breathe out slowly through your mouth as the waves contract"
+        return "Breathe out slowly through your mouth"
       case "hold2":
-        return "Hold your breath as the waves remain still"
+        return "Hold your breath"
       case "leftNostril":
-        return "Close right nostril, inhale through left as the waves expand"
+        return "Close right nostril, inhale through left"
       case "rightNostril":
-        return "Close left nostril, inhale through right as the waves expand"
+        return "Close left nostril, inhale through right"
     }
   }
 
@@ -535,144 +543,99 @@ export default function BreathePage() {
     },
   }
 
-  // Get gradient colors based on pattern and phase
-  const getGradientColors = () => {
-    if (!selectedPattern) return "from-blue-300 to-blue-500"
-
-    // Base color from the pattern
-    const baseColor = selectedPattern.color
-
-    // Adjust opacity based on phase
-    switch (phase) {
-      case "inhale":
-      case "leftNostril":
-      case "rightNostril":
-        return baseColor.replace("to-", "via-blue-400 to-")
-      case "exhale":
-        return baseColor.replace("from-", "from-purple-300 via-")
-      case "hold1":
-      case "hold2":
-        return baseColor.replace("to-", "via-indigo-400 to-")
-      default:
-        return baseColor
-    }
+  // Enhanced animation variants for the breathing circle
+  const breathingCircleVariants = {
+    inhale: {
+      scale: [1, 1.5],
+      opacity: [0.7, 1],
+      transition: {
+        duration: timeLeft,
+        ease: "easeInOut",
+      },
+    },
+    hold: {
+      scale: 1.5,
+      opacity: 1,
+      transition: {
+        duration: timeLeft,
+        ease: "linear",
+      },
+    },
+    exhale: {
+      scale: [1.5, 1],
+      opacity: [1, 0.7],
+      transition: {
+        duration: timeLeft,
+        ease: "easeInOut",
+      },
+    },
   }
 
-  // Calculate progress percentage for the current phase
-  const getProgressPercentage = () => {
-    const initialTime = getInitialTimeForPhase()
-    if (initialTime === 0) return 0
-    return ((initialTime - timeLeft) / initialTime) * 100
+  // Wave animation variants
+  const waveVariants = {
+    inhale: {
+      y: [0, -30],
+      opacity: [0.7, 1],
+      transition: {
+        duration: timeLeft,
+        ease: "easeInOut",
+      },
+    },
+    hold: {
+      y: -30,
+      opacity: 1,
+      transition: {
+        duration: timeLeft,
+        ease: "linear",
+      },
+    },
+    exhale: {
+      y: [-30, 0],
+      opacity: [1, 0.7],
+      transition: {
+        duration: timeLeft,
+        ease: "easeInOut",
+      },
+    },
   }
 
-  // Generate wave rings based on the current phase and pattern
-  const generateWaveRings = (count = 5) => {
-    const rings = []
-    const progress = getProgressPercentage() / 100
-    const baseSize = 240 // Base size in pixels
-
-    for (let i = 0; i < count; i++) {
-      const scale = 0.4 + i * 0.15 // Scale factor for each ring
-      const delay = i * 0.1 // Stagger delay for animation
-
-      // Calculate size based on phase
-      let size = baseSize * scale
-      let opacity = 0.2 + i * 0.15
-
-      if (phase === "inhale" || phase === "leftNostril" || phase === "rightNostril") {
-        // Expand from small to large during inhale
-        size = baseSize * (scale * (0.6 + progress * 0.6))
-        opacity = 0.2 + i * 0.15 + progress * 0.2
-      } else if (phase === "exhale") {
-        // Contract from large to small during exhale
-        size = baseSize * (scale * (1.2 - progress * 0.6))
-        opacity = 0.4 + i * 0.15 - progress * 0.2
-      } else {
-        // Hold phases - maintain size with subtle pulsing
-        size = baseSize * scale * 1.2
-      }
-
-      rings.push(
-        <motion.div
-          key={i}
-          className="absolute rounded-full border border-white/30"
-          style={{
-            width: `${size}px`,
-            height: `${size}px`,
-            top: `50%`,
-            left: `50%`,
-            marginLeft: `-${size / 2}px`,
-            marginTop: `-${size / 2}px`,
-            opacity: opacity,
-            zIndex: count - i,
-          }}
-          animate={{
-            scale: phase === "hold1" || phase === "hold2" ? [1, 1.05, 1] : 1,
-            opacity: phase === "hold1" || phase === "hold2" ? [opacity, opacity + 0.1, opacity] : opacity,
-          }}
-          transition={{
-            duration: phase === "hold1" || phase === "hold2" ? 2 : timeLeft,
-            ease: phase === "hold1" || phase === "hold2" ? "easeInOut" : "linear",
-            repeat: phase === "hold1" || phase === "hold2" ? Number.POSITIVE_INFINITY : 0,
-            delay: delay,
-          }}
-        />,
-      )
-    }
-
-    return rings
+  // Nostril animation variants
+  const leftNostrilVariants = {
+    active: {
+      opacity: 1,
+      scale: 1.2,
+      transition: {
+        duration: timeLeft,
+        ease: "easeInOut",
+      },
+    },
+    inactive: {
+      opacity: 0.4,
+      scale: 1,
+      transition: {
+        duration: 0.5,
+        ease: "easeInOut",
+      },
+    },
   }
 
-  // Generate nostril-specific wave rings
-  const generateNostrilWaveRings = (side: "left" | "right", count = 4) => {
-    const rings = []
-    const progress = getProgressPercentage() / 100
-    const baseSize = 70 // Base size in pixels
-    const isActive = (side === "left" && phase === "leftNostril") || (side === "right" && phase === "rightNostril")
-
-    for (let i = 0; i < count; i++) {
-      const scale = 0.6 + i * 0.2 // Scale factor for each ring
-      const delay = i * 0.1 // Stagger delay for animation
-
-      // Calculate size based on phase and active state
-      let size = baseSize * scale
-      let opacity = isActive ? 0.3 + i * 0.15 : 0.1
-
-      if (isActive) {
-        // Expand from small to large during active phase
-        size = baseSize * (scale * (0.7 + progress * 0.5))
-        opacity = 0.3 + i * 0.15 + progress * 0.2
-      }
-
-      rings.push(
-        <motion.div
-          key={`${side}-${i}`}
-          className="absolute rounded-full border border-white/30"
-          style={{
-            width: `${size}px`,
-            height: `${size}px`,
-            top: `50%`,
-            left: `50%`,
-            marginLeft: `-${size / 2}px`,
-            marginTop: `-${size / 2}px`,
-            opacity: opacity,
-            zIndex: count - i,
-          }}
-          animate={{
-            scale: isActive ? [1, 1.05, 1] : 1,
-            opacity: isActive ? [opacity, opacity + 0.1, opacity] : opacity,
-          }}
-          transition={{
-            duration: isActive ? 1.5 : 0.5,
-            ease: "easeInOut",
-            repeat: isActive ? Number.POSITIVE_INFINITY : 0,
-            delay: delay,
-          }}
-        />,
-      )
-    }
-
-    return rings
+  const rightNostrilVariants = {
+    active: {
+      opacity: 1,
+      scale: 1.2,
+      transition: {
+        duration: timeLeft,
+        ease: "easeInOut",
+      },
+    },
+    inactive: {
+      opacity: 0.4,
+      scale: 1,
+      transition: {
+        duration: 0.5,
+        ease: "easeInOut",
+      },
+    },
   }
 
   return (
@@ -915,14 +878,10 @@ export default function BreathePage() {
                             description: "Your personalized breathing pattern",
                             instructions: [
                               "Follow your custom breathing pattern",
-                              `Watch the waves expand as you inhale for ${customDurations.inhale} seconds`,
-                              customDurations.hold1 > 0
-                                ? `Hold your breath as the waves pause for ${customDurations.hold1} seconds`
-                                : "",
-                              `Watch the waves contract as you exhale for ${customDurations.exhale} seconds`,
-                              customDurations.hold2 > 0
-                                ? `Hold your breath as the waves pause for ${customDurations.hold2} seconds`
-                                : "",
+                              `Inhale for ${customDurations.inhale} seconds`,
+                              customDurations.hold1 > 0 ? `Hold for ${customDurations.hold1} seconds` : "",
+                              `Exhale for ${customDurations.exhale} seconds`,
+                              customDurations.hold2 > 0 ? `Hold for ${customDurations.hold2} seconds` : "",
                               "Repeat the cycle",
                             ].filter((i) => i !== ""),
                             inhale: customDurations.inhale,
@@ -959,7 +918,7 @@ export default function BreathePage() {
               <AnimatePresence>
                 <motion.div
                   key={phase}
-                  className={`fixed top-0 left-0 w-full h-full -z-10 bg-gradient-to-br ${getGradientColors()}`}
+                  className={`fixed top-0 left-0 w-full h-full -z-10 bg-gradient-to-br ${selectedPattern.color}`}
                   initial={{ opacity: 0.3 }}
                   animate={{
                     opacity:
@@ -1032,123 +991,70 @@ export default function BreathePage() {
                 </Card>
               </div>
 
-              {/* Enhanced Wave-based Breathing animation container */}
-              <div className="relative flex justify-center items-center my-6 h-[40vh] w-full max-w-md">
-                {selectedPattern.animationType === "circle" || selectedPattern.animationType === "wave" ? (
-                  <div className="relative flex justify-center items-center w-full h-full">
-                    {/* Wave-based circular animation */}
-                    <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
-                      {/* Background gradient for depth */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-300/10 to-transparent rounded-full" />
+              {/* Breathing animation container - smaller and less intrusive */}
+              <div className="relative flex justify-center items-center my-6 h-[30vh] w-full max-w-md">
+                {selectedPattern.animationType === "circle" && (
+                  <motion.div
+                    className="rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/50 w-24 h-24"
+                    animate={phase === "inhale" ? "inhale" : phase === "exhale" ? "exhale" : "hold"}
+                    variants={breathingCircleVariants}
+                    style={{
+                      background: `radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 70%)`,
+                    }}
+                  />
+                )}
 
-                      {/* Generate wave rings */}
-                      {generateWaveRings(6)}
-
-                      {/* Central text indicator */}
+                {selectedPattern.animationType === "wave" && (
+                  <div className="relative w-full h-20 flex items-center justify-center">
+                    {Array.from({ length: 5 }).map((_, i) => (
                       <motion.div
-                        className="absolute flex items-center justify-center text-white text-2xl font-light z-10 bg-blue-500/20 px-6 py-2 rounded-full backdrop-blur-sm"
-                        animate={{
-                          opacity: [0.8, 1, 0.8],
-                          scale: phase === "inhale" ? [0.9, 1] : phase === "exhale" ? [1, 0.9] : 1,
-                        }}
+                        key={i}
+                        className="absolute w-12 h-12 rounded-full bg-white/30 mx-1"
+                        style={{ left: `${i * 20 + 10}%` }}
+                        animate={phase === "inhale" ? "inhale" : phase === "exhale" ? "exhale" : "hold"}
+                        variants={waveVariants}
+                        custom={i * 0.2}
                         transition={{
-                          duration: timeLeft,
-                          ease: "easeInOut",
+                          delay: i * 0.1,
+                          duration: timeLeft / (i + 1),
                         }}
-                      >
-                        {getPhaseText()}
-                      </motion.div>
-                    </div>
+                      />
+                    ))}
                   </div>
-                ) : (
-                  // Nostril-specific animation
-                  <div className="relative w-full h-full flex items-center justify-center">
-                    <svg viewBox="0 0 200 200" className="w-full h-full max-w-xs">
-                      {/* Face outline with enhanced styling */}
-                      <circle cx="100" cy="100" r="80" fill="rgba(255,255,255,0.1)" stroke="white" strokeWidth="1" />
+                )}
 
-                      {/* Face features for better visualization */}
-                      <ellipse
-                        cx="100"
-                        cy="80"
-                        rx="50"
-                        ry="30"
-                        fill="none"
+                {selectedPattern.animationType === "nostril" && (
+                  <div className="relative w-40 h-40">
+                    <svg viewBox="0 0 100 100" className="w-full h-full">
+                      {/* Face outline */}
+                      <circle cx="50" cy="50" r="40" fill="none" stroke="white" strokeWidth="2" />
+
+                      {/* Left nostril */}
+                      <motion.circle
+                        cx="40"
+                        cy="60"
+                        r="8"
+                        fill="rgba(255,255,255,0.7)"
                         stroke="white"
-                        strokeWidth="0.5"
-                        opacity="0.5"
+                        strokeWidth="1"
+                        animate={phase === "leftNostril" ? "active" : "inactive"}
+                        variants={leftNostrilVariants}
                       />
 
-                      {/* Left nostril container */}
-                      <g transform="translate(70, 120)">
-                        {/* Left nostril waves */}
-                        <foreignObject width="40" height="40" x="-20" y="-20">
-                          <div className="relative w-40 h-40" style={{ transform: "translate(-50%, -50%)" }}>
-                            {generateNostrilWaveRings("left")}
-                          </div>
-                        </foreignObject>
-
-                        {/* Left nostril circle */}
-                        <circle cx="0" cy="0" r="15" fill="none" stroke="white" strokeWidth="1" />
-
-                        {/* Text indicator */}
-                        <text x="0" y="0" textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="8">
-                          {phase === "leftNostril" ? "IN" : ""}
-                        </text>
-                      </g>
-
-                      {/* Right nostril container */}
-                      <g transform="translate(130, 120)">
-                        {/* Right nostril waves */}
-                        <foreignObject width="40" height="40" x="-20" y="-20">
-                          <div className="relative w-40 h-40" style={{ transform: "translate(-50%, -50%)" }}>
-                            {generateNostrilWaveRings("right")}
-                          </div>
-                        </foreignObject>
-
-                        {/* Right nostril circle */}
-                        <circle cx="0" cy="0" r="15" fill="none" stroke="white" strokeWidth="1" />
-
-                        {/* Text indicator */}
-                        <text x="0" y="0" textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="8">
-                          {phase === "rightNostril" ? "IN" : ""}
-                        </text>
-                      </g>
+                      {/* Right nostril */}
+                      <motion.circle
+                        cx="60"
+                        cy="60"
+                        r="8"
+                        fill="rgba(255,255,255,0.7)"
+                        stroke="white"
+                        strokeWidth="1"
+                        animate={phase === "rightNostril" ? "active" : "inactive"}
+                        variants={rightNostrilVariants}
+                      />
 
                       {/* Nose bridge */}
-                      <path d="M100,80 L100,120" stroke="white" strokeWidth="1" fill="none" />
-
-                      {/* Hand indicators */}
-                      {phase === "leftNostril" && (
-                        <motion.path
-                          d="M150,100 C140,110 135,115 130,120"
-                          stroke="white"
-                          strokeWidth="1"
-                          fill="none"
-                          strokeDasharray="2,2"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 0.7 }}
-                          transition={{ duration: 0.5 }}
-                        />
-                      )}
-
-                      {phase === "rightNostril" && (
-                        <motion.path
-                          d="M50,100 C60,110 65,115 70,120"
-                          stroke="white"
-                          strokeWidth="1"
-                          fill="none"
-                          strokeDasharray="2,2"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 0.7 }}
-                          transition={{ duration: 0.5 }}
-                        />
-                      )}
-
-                      {/* Phase text */}
-                      <text x="100" y="170" textAnchor="middle" fill="white" fontSize="12">
-                        {getPhaseText()}
-                      </text>
+                      <path d="M50,40 L50,60" stroke="white" strokeWidth="2" fill="none" />
                     </svg>
                   </div>
                 )}
