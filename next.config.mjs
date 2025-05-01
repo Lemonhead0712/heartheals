@@ -1,3 +1,6 @@
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -42,10 +45,12 @@ const nextConfig = {
     // Only apply obfuscation in production and for client bundles
     if (!dev && !isServer) {
       const JavaScriptObfuscator = require('javascript-obfuscator');
+      const WebpackObfuscator = require('webpack-obfuscator');
+      const TerserPlugin = require('terser-webpack-plugin');
       
       // Add the JavaScript Obfuscator plugin
       config.optimization.minimizer.push(
-        new (require('webpack-obfuscator'))({
+        new WebpackObfuscator({
           compact: true,
           controlFlowFlattening: false, // Can cause performance issues if true
           deadCodeInjection: false, // Can increase bundle size if true
