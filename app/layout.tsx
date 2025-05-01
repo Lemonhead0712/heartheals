@@ -9,6 +9,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { HapticProvider } from "@/contexts/haptic-context"
 import { DesktopNav } from "@/components/desktop-nav"
 import { Footer } from "@/components/footer"
+import { SubscriptionTestPanel } from "@/components/subscription-test-panel"
 import { SwipeNavigationTutorial } from "@/components/swipe-navigation-tutorial"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -37,6 +38,7 @@ export default function RootLayout({
                 <Footer />
               </div>
               <BottomNav />
+              <SubscriptionTestPanel />
               <SwipeNavigationTutorial />
               <Toaster />
             </HapticProvider>

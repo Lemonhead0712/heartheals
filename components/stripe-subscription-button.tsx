@@ -1,16 +1,22 @@
 "use client"
 
 import { useState } from "react"
+
 import { useEffect, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 
 type StripeSubscriptionButtonProps = {
   buyButtonId: string
+  publishableKey: string
   className?: string
 }
 
-export function StripeSubscriptionButton({ buyButtonId, className = "" }: StripeSubscriptionButtonProps) {
+export function StripeSubscriptionButton({
+  buyButtonId,
+  publishableKey,
+  className = "",
+}: StripeSubscriptionButtonProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -53,10 +59,7 @@ export function StripeSubscriptionButton({ buyButtonId, className = "" }: Stripe
           </CardContent>
         </Card>
       ) : (
-        <stripe-buy-button
-          buy-button-id={buyButtonId}
-          publishable-key={process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ""}
-        ></stripe-buy-button>
+        <stripe-buy-button buy-button-id={buyButtonId} publishable-key={publishableKey}></stripe-buy-button>
       )}
     </div>
   )

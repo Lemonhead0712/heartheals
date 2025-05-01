@@ -24,6 +24,8 @@ export type SubscriptionContextType = {
   setIsActive: (active: boolean) => void
   setExpiresAt: (date: Date | null) => void
   resetAllFeatureUsage: () => void
+  isTestMode: boolean
+  setIsTestMode: (isTest: boolean) => void
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined)
@@ -44,6 +46,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [isActive, setIsActive] = useState(false)
   const [expiresAt, setExpiresAt] = useState<Date | null>(null)
   const [featureUsage, setFeatureUsage] = useState<FeatureUsage>({})
+  const [isTestMode, setIsTestMode] = useState(false)
 
   // Load subscription data from localStorage on mount
   useEffect(() => {
@@ -53,11 +56,13 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const savedIsActive = localStorage.getItem("heartsHeal_subscriptionActive")
         const savedExpiresAt = localStorage.getItem("heartsHeal_subscriptionExpires")
         const savedFeatureUsage = localStorage.getItem("heartsHeal_featureUsage")
+        const savedIsTestMode = localStorage.getItem("heartsHeal_subscriptionTestMode")
 
         if (savedTier) setTier(savedTier as SubscriptionTier)
         if (savedIsActive) setIsActive(savedIsActive === "true")
         if (savedExpiresAt) setExpiresAt(new Date(savedExpiresAt))
         if (savedFeatureUsage) setFeatureUsage(JSON.parse(savedFeatureUsage))
+        if (savedIsTestMode) setIsTestMode(savedIsTestMode === "true")
       } catch (error) {
         console.error("Error loading subscription data:", error)
       }
@@ -71,8 +76,9 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       localStorage.setItem("heartsHeal_subscriptionActive", String(isActive))
       if (expiresAt) localStorage.setItem("heartsHeal_subscriptionExpires", expiresAt.toISOString())
       localStorage.setItem("heartsHeal_featureUsage", JSON.stringify(featureUsage))
+      localStorage.setItem("heartsHeal_subscriptionTestMode", String(isTestMode))
     }
-  }, [tier, isActive, expiresAt, featureUsage])
+  }, [tier, isActive, expiresAt, featureUsage, isTestMode])
 
   // Calculate remaining days in subscription
   const remainingDays = expiresAt
@@ -147,6 +153,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setIsActive,
         setExpiresAt,
         resetAllFeatureUsage,
+        isTestMode,
+        setIsTestMode,
       }}
     >
       {children}
