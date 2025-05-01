@@ -8,6 +8,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { HapticProvider } from "@/contexts/haptic-context"
 import { AuthProvider } from "@/contexts/auth-context"
 import { MainLayout } from "@/components/layouts/main-layout"
+import { PageTransitionEffect } from "@/components/page-transition-effect"
 
 // Elegant serif font for headings
 const playfair = Playfair_Display({
@@ -45,6 +46,7 @@ export default function RootLayout({
             <AuthProvider>
               <HapticProvider>
                 <MainLayout>{children}</MainLayout>
+                <PageTransitionEffect />
                 <Toaster />
               </HapticProvider>
             </AuthProvider>
