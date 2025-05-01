@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { ChevronLeft, Check, Shield, CreditCard, Calendar, Info, X } from "lucide-react"
+import { ChevronLeft, Check, Shield, CreditCard, Calendar, X } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/logo"
@@ -16,12 +17,25 @@ import { useSubscription } from "@/contexts/subscription-context"
 import { SubscriptionStatus } from "@/components/subscription-status"
 import { SubscriptionQRCode } from "@/components/subscription-qr-code"
 import { PageContainer } from "@/components/page-container"
+import { PaymentErrorGuidance } from "@/components/payment-error-guidance"
 
 export default function SubscriptionPage() {
   const { tier, isActive } = useSubscription()
   const [paymentStatus, setPaymentStatus] = useState<"idle" | "processing" | "success" | "error">("idle")
   const [errorMessage, setErrorMessage] = useState("")
   const [paymentMethod, setPaymentMethod] = useState<"card" | "qr" | "manage">("card")
+  const searchParams = useSearchParams()
+
+  // Check for error parameters in URL (e.g., redirected from failed payment)
+  useEffect(() => {
+    const error = searchParams.get("error")
+    const errorCode = searchParams.get("code")
+
+    if (error) {
+      setPaymentStatus("error")
+      setErrorMessage(decodeURIComponent(error))
+    }
+  }, [searchParams])
 
   // Animation variants
   const container = {
@@ -109,13 +123,7 @@ export default function SubscriptionPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <Alert className="border-red-200 bg-red-50/80 backdrop-blur-sm">
-                <Info className="h-4 w-4 text-red-600" />
-                <AlertTitle className="text-red-800">Payment Failed</AlertTitle>
-                <AlertDescription className="text-red-700">
-                  {errorMessage || "There was an issue processing your payment. Please try again."}
-                </AlertDescription>
-              </Alert>
+              <PaymentErrorGuidance errorMessage={errorMessage} onRetry={() => setPaymentStatus("idle")} />
             </motion.div>
           )}
 
