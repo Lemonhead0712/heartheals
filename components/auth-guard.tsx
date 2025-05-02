@@ -13,7 +13,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
   useEffect(() => {
-    if (!isLoading && requiresLogin()) {
+    if (!isLoading && typeof requiresLogin === "function" ? requiresLogin() : requiresLogin) {
       // Store the current path before redirecting
       setIntendedDestination(pathname)
       // Redirect to login with the current path as a parameter

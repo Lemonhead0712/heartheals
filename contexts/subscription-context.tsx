@@ -28,7 +28,25 @@ export type SubscriptionContextType = {
   immediatelyActivatePremium: () => void
 }
 
-const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined)
+// Create a default context value to avoid null checks
+const defaultContextValue: SubscriptionContextType = {
+  tier: "free",
+  isActive: false,
+  expiresAt: null,
+  featureUsage: {},
+  remainingDays: null,
+  canUseFeature: () => false,
+  useFeature: () => false,
+  resetFeatureUsage: () => {},
+  setTier: () => {},
+  setIsActive: () => {},
+  setExpiresAt: () => {},
+  resetAllFeatureUsage: () => {},
+  updateSubscriptionStatus: () => {},
+  immediatelyActivatePremium: () => {},
+}
+
+const SubscriptionContext = createContext<SubscriptionContextType>(defaultContextValue)
 
 // Feature usage limits for free tier
 const FREE_TIER_LIMITS: { [key: string]: number } = {
@@ -62,6 +80,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         if (savedFeatureUsage) setFeatureUsage(JSON.parse(savedFeatureUsage))
       } catch (error) {
         console.error("Error loading subscription data:", error)
+        // Continue with default values if there's an error
       }
     }
   }, [])
@@ -69,10 +88,15 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Save subscription data to localStorage when it changes
   useEffect(() => {
     if (typeof window !== "undefined") {
-      localStorage.setItem("heartsHeal_subscriptionTier", tier)
-      localStorage.setItem("heartsHeal_subscriptionActive", String(isActive))
-      if (expiresAt) localStorage.setItem("heartsHeal_subscriptionExpires", expiresAt.toISOString())
-      localStorage.setItem("heartsHeal_featureUsage", JSON.stringify(featureUsage))
+      try {
+        localStorage.setItem("heartsHeal_subscriptionTier", tier)
+        localStorage.setItem("heartsHeal_subscriptionActive", String(isActive))
+        if (expiresAt) localStorage.setItem("heartsHeal_subscriptionExpires", expiresAt.toISOString())
+        localStorage.setItem("heartsHeal_featureUsage", JSON.stringify(featureUsage))
+      } catch (error) {
+        console.error("Error saving subscription data:", error)
+        // Continue even if localStorage fails
+      }
     }
   }, [tier, isActive, expiresAt, featureUsage])
 
@@ -206,8 +230,10 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
 export const useSubscription = (): SubscriptionContextType => {
   const context = useContext(SubscriptionContext)
-  if (context === undefined) {
-    throw new Error("useSubscription must be used within a SubscriptionProvider")
+  if (!context) {
+    console.error("useSubscription must be used within a SubscriptionProvider")
+    // Return default context instead of throwing to prevent app crashes
+    return defaultContextValue
   }
   return context
 }

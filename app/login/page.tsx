@@ -16,6 +16,7 @@ import Link from "next/link"
 import { PageContainer } from "@/components/page-container"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
+import { useHapticContext } from "@/contexts/haptic-context"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -30,8 +31,13 @@ export default function LoginPage() {
   const [redirectPath, setRedirectPath] = useState<string | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { login, authError, clearAuthError } = useAuth()
+  const auth = useAuth()
+  const { authError } = auth
+  // Safely access clearAuthError, providing a fallback if it doesn't exist
+  const clearAuthError =
+    typeof auth.clearAuthError === "function" ? auth.clearAuthError : () => console.log("clearAuthError not available")
   const { toast } = useToast()
+  const hapticContext = useHapticContext() // Initialize the hook outside the try block
 
   // Get parameters from URL
   useEffect(() => {
@@ -59,7 +65,10 @@ export default function LoginPage() {
   // Clear auth errors when component unmounts
   useEffect(() => {
     return () => {
-      clearAuthError()
+      // Safely call clearAuthError
+      if (typeof clearAuthError === "function") {
+        clearAuthError()
+      }
     }
   }, [clearAuthError])
 
@@ -98,7 +107,11 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    clearAuthError()
+
+    // Safely call clearAuthError
+    if (typeof clearAuthError === "function") {
+      clearAuthError()
+    }
 
     // Validate form
     if (!validateForm()) {
@@ -109,9 +122,19 @@ export default function LoginPage() {
 
     try {
       // Attempt login
-      const success = await login(email, password, redirectPath || undefined)
+      const success = await auth.login(email, password, redirectPath || undefined)
 
       if (success) {
+        // Safely trigger haptic feedback if available
+        try {
+          if (hapticContext && typeof hapticContext.haptic === "function") {
+            hapticContext.haptic("medium")
+          }
+        } catch (hapticError) {
+          // Silently handle haptic errors to prevent login flow disruption
+          console.warn("Haptic feedback error:", hapticError)
+        }
+
         toast({
           title: "Login Successful",
           description: isFromPayment

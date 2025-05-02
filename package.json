@@ -64,11 +64,13 @@
     "framer-motion": "latest",
     "stripe": "latest",
     "@react-email/components": "latest",
-    "resend": "latest",
-    "@react-email/render": "latest",
     "canvas-confetti": "latest",
     "@supabase/auth-helpers-nextjs": "latest",
-    "@stripe/react-stripe-js": "latest"
+    "@react-email/tailwind": "latest",
+    "resend": "latest",
+    "@react-email/render": "latest",
+    "@stripe/react-stripe-js": "latest",
+    "crypto": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

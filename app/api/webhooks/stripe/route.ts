@@ -1,210 +1,153 @@
-import { NextResponse } from "next/server"
-import Stripe from "stripe"
-import { sendSubscriptionConfirmationEmail } from "@/lib/email-utils"
+import { type NextRequest, NextResponse } from "next/server"
+import { logError } from "@/utils/error-utils"
+import { processStripeWebhookEvent, generateIdempotencyKey, type WebhookEventMetadata } from "@/lib/webhook-service"
+import { hasProcessedEvent, recordProcessedEvent } from "@/lib/webhook-db"
+import { verifyStripeSignature, verifyTimestamp, checkRateLimit } from "@/lib/webhook-security"
+import { recordWebhookMetrics } from "@/lib/webhook-monitoring"
 
-// Initialize Stripe with the secret key from environment variables
-const getStripeInstance = () => {
-  const secretKey = process.env.STRIPE_SECRET_KEY
+// Webhook configuration
+const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET
+const RATE_LIMIT = 100 // Max requests per minute per IP
+const RATE_LIMIT_WINDOW_MS = 60 * 1000 // 1 minute
 
-  if (!secretKey) {
-    throw new Error("Stripe secret key is missing")
-  }
-
-  return new Stripe(secretKey, {
-    apiVersion: "2023-10-16",
-  })
-}
-
-export async function POST(request: Request) {
-  const body = await request.text()
-  const signature = request.headers.get("stripe-signature") as string
-
-  if (!signature) {
-    return NextResponse.json({ error: "Missing Stripe signature" }, { status: 400 })
-  }
-
-  // Get webhook secret from environment variables
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
-  if (!webhookSecret) {
-    console.error("Stripe webhook secret is missing")
-    return NextResponse.json({ error: "Webhook configuration error" }, { status: 500 })
-  }
-
-  let event: Stripe.Event
+export async function POST(request: NextRequest) {
+  const startTime = Date.now()
 
   try {
-    // Get Stripe instance
-    const stripe = getStripeInstance()
+    // Get client IP for rate limiting
+    const ip = request.headers.get("x-forwarded-for") || "unknown"
+
+    // Check rate limit
+    if (!checkRateLimit(ip, RATE_LIMIT, RATE_LIMIT_WINDOW_MS)) {
+      console.warn(`Rate limit exceeded for IP: ${ip}`)
+      return NextResponse.json({ error: "Too many requests, please try again later" }, { status: 429 })
+    }
+
+    // Get request body and signature
+    const body = await request.text()
+    const signature = request.headers.get("stripe-signature")
+
+    // Validate signature header
+    if (!signature) {
+      console.error("Missing Stripe signature")
+      return NextResponse.json({ error: "Missing Stripe signature" }, { status: 400 })
+    }
+
+    // Validate webhook secret
+    if (!WEBHOOK_SECRET) {
+      console.error("Stripe webhook secret is missing")
+      return NextResponse.json({ error: "Webhook configuration error" }, { status: 500 })
+    }
 
     // Verify the webhook signature
-    event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
-  } catch (err) {
-    const error = err as Error
-    console.error(`Webhook signature verification failed: ${error.message}`)
-    return NextResponse.json({ error: error.message }, { status: 400 })
-  }
+    const { isValid, event, error } = verifyStripeSignature(body, signature, WEBHOOK_SECRET)
 
-  // Handle specific event types
-  try {
-    switch (event.type) {
-      case "customer.subscription.created":
-        await handleSubscriptionCreated(event.data.object as Stripe.Subscription)
-        break
-      case "customer.subscription.updated":
-        await handleSubscriptionUpdated(event.data.object as Stripe.Subscription)
-        break
-      case "customer.subscription.deleted":
-        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription)
-        break
-      case "invoice.payment_succeeded":
-        await handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice)
-        break
-      case "invoice.payment_failed":
-        await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice)
-        break
-      default:
-        console.log(`Unhandled event type: ${event.type}`)
+    if (!isValid || !event) {
+      console.error(`Webhook signature verification failed: ${error?.message}`)
+      return NextResponse.json({ error: error?.message || "Invalid signature" }, { status: 400 })
     }
 
-    return NextResponse.json({ received: true })
-  } catch (error) {
-    console.error("Error handling webhook event:", error)
-    return NextResponse.json({ error: "Failed to process webhook" }, { status: 500 })
-  }
-}
+    // Verify timestamp is recent
+    if (!verifyTimestamp(event.created * 1000)) {
+      console.error(`Webhook event is too old: ${event.id}`)
+      return NextResponse.json({ error: "Event is too old" }, { status: 400 })
+    }
 
-// Webhook event handlers
-async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
-  console.log(`Subscription created: ${subscription.id}`)
+    // Check for duplicate events (idempotency)
+    const eventId = event.id
+    const hasProcessed = await hasProcessedEvent(eventId)
 
-  try {
-    // Get customer details to send confirmation email
-    const stripe = getStripeInstance()
-    const customerId = subscription.customer as string
+    if (hasProcessed) {
+      console.log(`Webhook event already processed: ${eventId}`)
+      return NextResponse.json({ received: true, idempotent: true }, { status: 200 })
+    }
 
-    const customer = await stripe.customers.retrieve(customerId)
+    // Generate idempotency key and metadata
+    const idempotencyKey = generateIdempotencyKey(event)
+    const metadata: WebhookEventMetadata = {
+      eventId: event.id,
+      eventType: event.type,
+      timestamp: event.created,
+      apiVersion: event.api_version || "",
+      idempotencyKey,
+    }
 
-    if (customer && !customer.deleted) {
-      const email = customer.email
-      const name = customer.name
+    // Process the webhook event
+    const result = await processStripeWebhookEvent(event, metadata)
+    const processingTime = Date.now() - startTime
 
-      if (email) {
-        // Get subscription plan details
-        const priceId = subscription.items.data[0]?.price.id
-        const price = priceId ? await stripe.prices.retrieve(priceId) : null
-        const productId = price?.product as string
-        const product = productId ? await stripe.products.retrieve(productId) : null
+    // Record the processed event for idempotency
+    await recordProcessedEvent(eventId, event.type, event.created, result, processingTime, result.error)
 
-        const planName = product?.name || "Premium"
-        const amount = price ? `$${(price.unit_amount! / 100).toFixed(2)}` : "$5.00"
-        const interval = price?.recurring?.interval || "month"
-        const intervalCount = price?.recurring?.interval_count || 1
+    // Record metrics
+    recordWebhookMetrics({
+      eventType: event.type,
+      success: result.success,
+      processingTime,
+      error: result.error,
+    })
 
-        // Format the billing period
-        const billingPeriod = intervalCount === 1 ? interval : `${intervalCount} ${interval}s`
+    // Log processing time
+    console.log(`Processed webhook event ${eventId} in ${processingTime}ms`)
 
-        // Send confirmation email
-        await sendSubscriptionConfirmationEmail({
-          email,
-          userName: name || "Valued User",
-          subscriptionPlan: planName,
-          amount: `${amount} / ${billingPeriod}`,
-          subscriptionId: subscription.id,
-          startDate: new Date(subscription.current_period_start * 1000).toLocaleDateString(),
-          endDate: new Date(subscription.current_period_end * 1000).toLocaleDateString(),
-        })
-
-        // In a real app, you would update your database with the subscription details
-        // For example:
-        // await db.subscriptions.create({
-        //   userId: getUserIdFromEmail(email),
-        //   stripeCustomerId: customerId,
-        //   stripeSubscriptionId: subscription.id,
-        //   planId: productId,
-        //   status: subscription.status,
-        //   currentPeriodStart: new Date(subscription.current_period_start * 1000),
-        //   currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-        //   createdAt: new Date(),
-        // })
-      }
+    // Return appropriate response
+    if (result.success) {
+      return NextResponse.json({ received: true, processed: true })
+    } else {
+      // We still return 200 to acknowledge receipt, but include error details
+      return NextResponse.json(
+        {
+          received: true,
+          processed: false,
+          error: result.message,
+        },
+        { status: 200 },
+      )
     }
   } catch (error) {
-    console.error("Error processing subscription creation:", error)
+    // Calculate processing time even for errors
+    const processingTime = Date.now() - startTime
+
+    // Log the error
+    logError("Unhandled error in webhook handler", error)
+
+    // Record error metrics
+    recordWebhookMetrics({
+      eventType: "error",
+      success: false,
+      processingTime,
+      error,
+    })
+
+    // Return error response
+    return NextResponse.json(
+      {
+        error: "Failed to process webhook",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }
 
-async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  // In a real app, you would update your database with the subscription changes
-  console.log(`Subscription updated: ${subscription.id}, status: ${subscription.status}`)
-}
-
-async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  // In a real app, you would update your database to mark the subscription as cancelled
-  console.log(`Subscription deleted: ${subscription.id}`)
-}
-
-async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
-  console.log(`Invoice payment succeeded: ${invoice.id}`)
-
-  // If this is a subscription invoice, we might want to send a receipt
-  if (invoice.subscription) {
-    try {
-      const stripe = getStripeInstance()
-      const customerId = invoice.customer as string
-      const subscriptionId = invoice.subscription as string
-
-      const customer = await stripe.customers.retrieve(customerId)
-      const subscription = await stripe.subscriptions.retrieve(subscriptionId)
-
-      if (customer && !customer.deleted && customer.email) {
-        // Get payment details
-        const paymentIntentId = invoice.payment_intent as string
-        let paymentMethod = null
-
-        if (paymentIntentId) {
-          const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
-          if (paymentIntent.payment_method) {
-            paymentMethod = await stripe.paymentMethods.retrieve(paymentIntent.payment_method as string)
-          }
-        }
-
-        // Format card details if available
-        let paymentDetails = "Payment method not available"
-        if (paymentMethod && paymentMethod.type === "card" && paymentMethod.card) {
-          const card = paymentMethod.card
-          paymentDetails = `${card.brand.toUpperCase()} ending in ${card.last4}`
-        }
-
-        // Here you would send a payment receipt email
-        // For example:
-        // await sendPaymentReceiptEmail({
-        //   email: customer.email,
-        //   userName: customer.name || "Valued User",
-        //   invoiceId: invoice.id,
-        //   amount: `$${(invoice.amount_paid / 100).toFixed(2)}`,
-        //   paymentDate: new Date(invoice.created * 1000).toLocaleDateString(),
-        //   paymentMethod: paymentDetails,
-        //   subscriptionPlan: subscription.items.data[0]?.price.nickname || "Premium",
-        // })
-
-        // In a real app, you would update your database with the payment details
-        // For example:
-        // await db.payments.create({
-        //   userId: getUserIdFromEmail(customer.email),
-        //   stripeInvoiceId: invoice.id,
-        //   stripePaymentIntentId: paymentIntentId,
-        //   amount: invoice.amount_paid,
-        //   status: 'succeeded',
-        //   createdAt: new Date(invoice.created * 1000),
-        // })
-      }
-    } catch (error) {
-      console.error("Error processing invoice payment success:", error)
-    }
+// Add a health check endpoint
+export async function GET(request: NextRequest) {
+  // Only allow health checks from authorized sources
+  const authHeader = request.headers.get("authorization")
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
-}
 
-async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
-  // In a real app, you would update your database and possibly notify the user
-  console.log(`Invoice payment failed: ${invoice.id}`)
+  const token = authHeader.substring(7)
+  const validToken = process.env.WEBHOOK_HEALTH_CHECK_TOKEN
+
+  if (!validToken || token !== validToken) {
+    return NextResponse.json({ error: "Invalid token" }, { status: 403 })
+  }
+
+  // Return health status
+  const { getWebhookHealthStatus } = await import("@/lib/webhook-monitoring")
+  const healthStatus = getWebhookHealthStatus()
+
+  return NextResponse.json(healthStatus)
 }

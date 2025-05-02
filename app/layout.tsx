@@ -28,9 +28,24 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "HeartsHeal♥",
-  description: "A safe space for emotional healing, reflection, and growth",
-  viewport: "width=device-width, initial-scale=1, viewport-fit=cover",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
+  title: "HeartHeals♥",
+  description: "Your emotional wellness companion",
+  // Add Content Security Policy
+  other: {
+    "Content-Security-Policy": `
+      default-src 'self';
+      script-src 'self' https://js.stripe.com 'unsafe-inline';
+      style-src 'self' 'unsafe-inline';
+      img-src 'self' data: https://*.stripe.com;
+      font-src 'self';
+      connect-src 'self' https://api.stripe.com;
+      frame-src https://js.stripe.com https://hooks.stripe.com;
+      object-src 'none';
+    `
+      .replace(/\s+/g, " ")
+      .trim(),
+  },
     generator: 'v0.dev'
 }
 

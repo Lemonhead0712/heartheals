@@ -40,17 +40,29 @@ export default function SubscriptionPage() {
     const checkStripeConfig = async () => {
       try {
         const response = await fetch("/api/subscription/validate-config")
-        const data = await response.json()
-
-        // Check if the response indicates success
-        if (response.ok && data.status === "ok") {
-          setStripeConfigValid(true)
-        } else {
-          console.error("Stripe configuration issue:", data.message)
+        if (!response.ok) {
+          console.error("Stripe configuration API returned an error:", response.status)
           setStripeConfigValid(false)
           toast({
             title: "Payment System Notice",
-            description: data.message || "Payment system configuration issue detected.",
+            description: "Unable to validate payment system configuration.",
+            variant: "destructive",
+          })
+          setIsLoaded(true)
+          return
+        }
+
+        const data = await response.json()
+
+        // Check if the response indicates success
+        if (data && data.status === "ok") {
+          setStripeConfigValid(true)
+        } else {
+          console.error("Stripe configuration issue:", data?.message || "Unknown issue")
+          setStripeConfigValid(false)
+          toast({
+            title: "Payment System Notice",
+            description: data?.message || "Payment system configuration issue detected.",
             variant: "destructive",
           })
         }
@@ -72,9 +84,14 @@ export default function SubscriptionPage() {
 
   // Check for post-subscription redirect
   useEffect(() => {
-    const storedRedirect = localStorage.getItem("heartsHeal_postSubscriptionRedirect")
-    if (storedRedirect) {
-      setRedirectDestination(storedRedirect)
+    try {
+      const storedRedirect = localStorage.getItem("heartsHeal_postSubscriptionRedirect")
+      if (storedRedirect) {
+        setRedirectDestination(storedRedirect)
+      }
+    } catch (error) {
+      console.error("Error accessing localStorage:", error)
+      // Continue without the redirect
     }
   }, [])
 
@@ -127,7 +144,11 @@ export default function SubscriptionPage() {
         // User is already logged in, handle redirect after successful subscription
         setTimeout(() => {
           if (redirectDestination) {
-            localStorage.removeItem("heartsHeal_postSubscriptionRedirect")
+            try {
+              localStorage.removeItem("heartsHeal_postSubscriptionRedirect")
+            } catch (error) {
+              console.error("Error removing redirect from localStorage:", error)
+            }
             router.push(redirectDestination)
           } else {
             router.push("/")
@@ -158,6 +179,44 @@ export default function SubscriptionPage() {
         </div>
       </PageContainer>
     )
+  }
+
+  // Error boundary component to catch and display errors
+  function ErrorBoundary({ children }: { children: React.ReactNode }) {
+    const [hasError, setHasError] = useState(false)
+    const [error, setError] = useState<Error | null>(null)
+
+    useEffect(() => {
+      const errorHandler = (error: ErrorEvent) => {
+        console.error("Caught in error boundary:", error)
+        setHasError(true)
+        setError(error.error || new Error("Unknown error occurred"))
+        return true
+      }
+
+      window.addEventListener("error", errorHandler)
+      return () => window.removeEventListener("error", errorHandler)
+    }, [])
+
+    if (hasError) {
+      return (
+        <div className="p-6 border border-red-200 rounded-md bg-red-50">
+          <h3 className="text-lg font-medium text-red-800 mb-2">Payment System Error</h3>
+          <p className="text-red-600 mb-4">
+            {error?.message || "There was an issue loading the payment system. Please try again later."}
+          </p>
+          <Button
+            variant="outline"
+            className="border-red-200 text-red-700 hover:bg-red-100"
+            onClick={() => window.location.reload()}
+          >
+            Reload Page
+          </Button>
+        </div>
+      )
+    }
+
+    return <>{children}</>
   }
 
   return (
@@ -302,7 +361,11 @@ export default function SubscriptionPage() {
                     onClick={() => {
                       // If there was a redirect destination, clear it
                       if (redirectDestination) {
-                        localStorage.removeItem("heartsHeal_postSubscriptionRedirect")
+                        try {
+                          localStorage.removeItem("heartsHeal_postSubscriptionRedirect")
+                        } catch (error) {
+                          console.error("Error removing redirect from localStorage:", error)
+                        }
                       }
                       window.location.href = "/"
                     }}
@@ -380,7 +443,9 @@ export default function SubscriptionPage() {
                     <Button
                       className="w-full bg-purple-600 hover:bg-purple-700"
                       onClick={() => {
-                        paymentSectionRef.current?.scrollIntoView({ behavior: "smooth" })
+                        if (paymentSectionRef.current) {
+                          paymentSectionRef.current.scrollIntoView({ behavior: "smooth" })
+                        }
                         setPaymentMethod("card")
                       }}
                     >
@@ -458,10 +523,19 @@ export default function SubscriptionPage() {
 
                     <TabsContent value="card">
                       <ErrorBoundary>
-                        <PaymentForm
-                          amount={500} // $5.00 in cents
-                          onPaymentStatusChange={handlePaymentStatusChange}
-                        />
+                        {stripeConfigValid ? (
+                          <PaymentForm
+                            amount={500} // $5.00 in cents
+                            onPaymentStatusChange={handlePaymentStatusChange}
+                          />
+                        ) : (
+                          <div className="p-6 border border-red-200 rounded-md bg-red-50">
+                            <h3 className="text-lg font-medium text-red-800 mb-2">Payment System Unavailable</h3>
+                            <p className="text-red-600 mb-4">
+                              The payment system is currently unavailable. Please try again later or contact support.
+                            </p>
+                          </div>
+                        )}
                       </ErrorBoundary>
                     </TabsContent>
 
@@ -533,42 +607,4 @@ export default function SubscriptionPage() {
       </div>
     </PageContainer>
   )
-}
-
-// Error boundary component to catch and display errors
-function ErrorBoundary({ children }: { children: React.ReactNode }) {
-  const [hasError, setHasError] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
-
-  useEffect(() => {
-    const errorHandler = (error: ErrorEvent) => {
-      console.error("Caught in error boundary:", error)
-      setHasError(true)
-      setError(error.error || new Error("Unknown error occurred"))
-      return true
-    }
-
-    window.addEventListener("error", errorHandler)
-    return () => window.removeEventListener("error", errorHandler)
-  }, [])
-
-  if (hasError) {
-    return (
-      <div className="p-6 border border-red-200 rounded-md bg-red-50">
-        <h3 className="text-lg font-medium text-red-800 mb-2">Payment System Error</h3>
-        <p className="text-red-600 mb-4">
-          {error?.message || "There was an issue loading the payment system. Please try again later."}
-        </p>
-        <Button
-          variant="outline"
-          className="border-red-200 text-red-700 hover:bg-red-100"
-          onClick={() => window.location.reload()}
-        >
-          Reload Page
-        </Button>
-      </div>
-    )
-  }
-
-  return <>{children}</>
 }

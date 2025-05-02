@@ -32,7 +32,22 @@ type AuthContextType = {
   clearAuthError: () => void
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+// Create a default context with safe fallbacks
+const defaultAuthContext: AuthContextType = {
+  user: null,
+  isLoading: true,
+  isAuthenticated: false,
+  login: async () => false,
+  logout: () => {},
+  requiresLogin: () => false,
+  setIntendedDestination: () => {},
+  getIntendedDestination: () => null,
+  checkPremiumAccess: () => false,
+  authError: null,
+  clearAuthError: () => {},
+}
+
+const AuthContext = createContext<AuthContextType>(defaultAuthContext)
 
 // List of paths that require premium subscription
 const PREMIUM_PATHS = ["/premium", "/emotional-log", "/analytics", "/export", "/advanced-features"]
@@ -349,7 +364,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export const useAuth = () => {
   const context = useContext(AuthContext)
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
+    console.error("useAuth must be used within an AuthProvider")
+    return defaultAuthContext
   }
   return context
 }

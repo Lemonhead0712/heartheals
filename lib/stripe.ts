@@ -24,8 +24,8 @@ export const getPublishableKey = () => {
   return publishableKey
 }
 
-// Validate that Stripe is properly configured
-export const validateStripeConfig = async (): Promise<{ isValid: boolean; message?: string }> => {
+// Update the validateStripeConfig function to better handle test mode
+export const validateStripeConfig = async (): Promise<{ isValid: boolean; message?: string; isTestMode?: boolean }> => {
   try {
     // Check if environment variables are set
     const secretKey = process.env.STRIPE_SECRET_KEY
@@ -45,6 +45,9 @@ export const validateStripeConfig = async (): Promise<{ isValid: boolean; messag
       }
     }
 
+    // Check if we're in test mode
+    const isTestMode = secretKey.includes("test") || publishableKey.includes("test")
+
     // Initialize Stripe with the secret key
     const stripe = new Stripe(secretKey, {
       apiVersion: "2023-10-16",
@@ -53,7 +56,10 @@ export const validateStripeConfig = async (): Promise<{ isValid: boolean; messag
     // Make a simple API call to verify the key works
     await stripe.balance.retrieve()
 
-    return { isValid: true }
+    return {
+      isValid: true,
+      isTestMode,
+    }
   } catch (error) {
     console.error("Stripe configuration validation failed:", error)
 
@@ -68,5 +74,32 @@ export const validateStripeConfig = async (): Promise<{ isValid: boolean; messag
       isValid: false,
       message: error instanceof Error ? error.message : "Unknown error validating Stripe configuration",
     }
+  }
+}
+
+// Add a new function to get test card details
+export const getTestCardDetails = () => {
+  return {
+    success: {
+      number: "4242 4242 4242 4242",
+      exp_month: "12",
+      exp_year: (new Date().getFullYear() + 1).toString().substr(-2),
+      cvc: "424",
+      zip: "42424",
+    },
+    decline: {
+      number: "4000 0000 0000 0002",
+      exp_month: "12",
+      exp_year: (new Date().getFullYear() + 1).toString().substr(-2),
+      cvc: "424",
+      zip: "42424",
+    },
+    insufficient_funds: {
+      number: "4000 0000 0000 9995",
+      exp_month: "12",
+      exp_year: (new Date().getFullYear() + 1).toString().substr(-2),
+      cvc: "424",
+      zip: "42424",
+    },
   }
 }

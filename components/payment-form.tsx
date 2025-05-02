@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { CardElement, useStripe, useElements, Elements } from "@stripe/react-stripe-js"
 import { loadStripe } from "@stripe/stripe-js"
@@ -16,6 +16,11 @@ import confetti from "canvas-confetti"
 import { Check, Heart, Loader2, Info, AlertTriangle } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { TestModeBanner } from "@/components/test-mode-banner"
+import { getUserFriendlyErrorMessage } from "@/utils/payment-error-messages"
+import { trackPaymentEvent } from "@/lib/payment-analytics"
+import { useNetworkStatus } from "@/hooks/use-network-status"
+import { getTestCardDetails } from "@/lib/stripe"
 
 // Initialize Stripe with error handling
 const getStripePromise = () => {
@@ -230,6 +235,11 @@ const PaymentSuccessAnimation = ({
 export function PaymentForm({ amount, onPaymentStatusChange }: PaymentFormProps) {
   const [stripeError, setStripeError] = useState<string | null>(null)
 
+  // Memoize the error handler to prevent unnecessary re-renders
+  const handleStripeError = useCallback((error: string | null) => {
+    setStripeError(error)
+  }, [])
+
   if (!stripePromise) {
     return (
       <div className="p-6 border border-red-200 rounded-md bg-red-50">
@@ -253,7 +263,7 @@ export function PaymentForm({ amount, onPaymentStatusChange }: PaymentFormProps)
         <PaymentFormContent
           amount={amount}
           onPaymentStatusChange={onPaymentStatusChange}
-          onStripeError={setStripeError}
+          onStripeError={handleStripeError}
         />
       </Elements>
     </>
@@ -269,6 +279,7 @@ function PaymentFormContent({
   const stripe = useStripe()
   const elements = useElements()
   const [error, setError] = useState<string | null>(null)
+  const isOnline = useNetworkStatus()
   const [cardError, setCardError] = useState<string | null>(null)
   const [processing, setProcessing] = useState(false)
   const [succeeded, setSucceeded] = useState(false)
@@ -283,6 +294,42 @@ function PaymentFormContent({
   const [emailDetails, setEmailDetails] = useState("")
   const [formValidated, setFormValidated] = useState(false)
   const [paymentComplete, setPaymentComplete] = useState(false)
+  const [isTestMode, setIsTestMode] = useState(false)
+  const [paymentAttempts, setPaymentAttempts] = useState(0)
+
+  // Add a ref to track component mounting state
+  const isMounted = useRef(true)
+
+  // Track if card element is ready
+  const [cardElementReady, setCardElementReady] = useState(false)
+  const cardElementRef = useRef(null)
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      isMounted.current = false
+    }
+  }, [])
+
+  // Check if we're in test mode
+  useEffect(() => {
+    const checkTestMode = async () => {
+      try {
+        const response = await fetch("/api/subscription/validate-config")
+        if (response.ok) {
+          const data = await response.json()
+          if (data.isTestMode) {
+            setIsTestMode(true)
+            console.log("Payment system is in TEST MODE")
+          }
+        }
+      } catch (error) {
+        console.error("Error checking test mode:", error)
+      }
+    }
+
+    checkTestMode()
+  }, [])
 
   // Validate form inputs
   useEffect(() => {
@@ -302,6 +349,11 @@ function PaymentFormContent({
 
   // Handle card element changes
   const handleCardChange = (event: any) => {
+    // Update card element ready state
+    setCardElementReady(event.complete)
+    cardElementRef.current = event.elementType === "card" ? event.element : null
+
+    // Set error message if there's an error
     setCardError(event.error ? event.error.message : "")
   }
 
@@ -332,15 +384,48 @@ function PaymentFormContent({
     return true
   }
 
+  // Add a function to fill test card details (for development/testing only)
+  const fillTestCard = (cardType: "success" | "decline" | "insufficient_funds") => {
+    if (!isTestMode) return
+
+    const testCards = getTestCardDetails()
+    const cardDetails = testCards[cardType]
+
+    // In a real implementation, we would use the Stripe Elements API to fill the card details
+    // For now, we'll just log the test card details
+    console.log(`Test card details (${cardType}):`, cardDetails)
+
+    toast({
+      title: "Test Card Selected",
+      description: `Using test card: ${cardDetails.number} (${cardType})`,
+      variant: "default",
+    })
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    // Increment payment attempts counter
+    setPaymentAttempts((prev) => prev + 1)
+
+    if (!isOnline) {
+      setError("You appear to be offline. Please check your internet connection and try again.")
+      return
+    }
 
     if (!stripe || !elements) {
       setError("Payment system is not available. Please try again later.")
       return
     }
 
+    // Check if card element is ready before proceeding
+    if (!cardElementReady) {
+      setError("Please complete the card details before proceeding.")
+      return
+    }
+
+    // Get card element with additional checks
     const cardElement = elements.getElement(CardElement)
     if (!cardElement) {
       setError("Card element not found. Please refresh the page and try again.")
@@ -355,31 +440,91 @@ function PaymentFormContent({
     setProcessing(true)
     onPaymentStatusChange("processing")
 
+    // Track payment initiated event
     try {
-      // Create payment intent on the server
-      const createPaymentResponse = await fetch("/api/subscription/create-payment-intent", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          amount,
-          email,
-          name,
-        }),
+      trackPaymentEvent("payment_initiated", {
+        amount,
+        currency: "usd",
+        paymentMethod: "card",
+        testMode: isTestMode,
       })
+    } catch (error) {
+      console.error("Error tracking payment event:", error)
+      // Continue even if tracking fails
+    }
 
-      if (!createPaymentResponse.ok) {
-        const errorData = await createPaymentResponse.json()
-        throw new Error(errorData.error || "Failed to create payment intent")
+    try {
+      // Create payment intent on the server with timeout
+      const createPaymentWithTimeout = async () => {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+
+        try {
+          const response = await fetch("/api/subscription/create-payment-intent", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              amount,
+              email,
+              name,
+              testMode: isTestMode,
+            }),
+            signal: controller.signal,
+          })
+
+          clearTimeout(timeoutId)
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || "Failed to create payment intent")
+          }
+
+          return await response.json()
+        } catch (error) {
+          clearTimeout(timeoutId)
+
+          if (error.name === "AbortError") {
+            throw new Error("Payment request timed out. Please try again.")
+          }
+
+          throw error
+        }
       }
 
-      const { clientSecret } = await createPaymentResponse.json()
+      // Replace the existing fetch call with this function
+      const { clientSecret, isTestMode: confirmedTestMode } = await createPaymentWithTimeout()
+
+      // Update test mode state if needed
+      if (confirmedTestMode !== undefined && confirmedTestMode !== isTestMode) {
+        setIsTestMode(confirmedTestMode)
+      }
+
+      // Check if component is still mounted before proceeding
+      if (!isMounted.current) {
+        console.log("Component unmounted during payment process, aborting")
+        return
+      }
+
+      // Check if stripe and elements are still available
+      if (!stripe || !elements) {
+        throw new Error("Payment system became unavailable. Please try again.")
+      }
+
+      // Get a fresh reference to the card element
+      const freshCardElement = elements.getElement(CardElement)
+      if (!freshCardElement) {
+        throw new Error("Card element is no longer available. Please refresh and try again.")
+      }
+
+      // Log payment attempt for debugging
+      console.log(`Confirming payment with Stripe (attempt ${paymentAttempts})${isTestMode ? " - TEST MODE" : ""}`)
 
       // Confirm the payment with Stripe
       const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
-          card: cardElement,
+          card: freshCardElement,
           billing_details: {
             name,
             email,
@@ -387,11 +532,34 @@ function PaymentFormContent({
         },
       })
 
+      // Check if component is still mounted after payment confirmation
+      if (!isMounted.current) {
+        console.log("Component unmounted after payment confirmation, aborting further processing")
+        return
+      }
+
       if (confirmError) {
+        console.error("Payment confirmation error:", confirmError)
         throw new Error(confirmError.message || "Payment confirmation failed")
       }
 
       if (paymentIntent.status === "succeeded") {
+        console.log(`Payment succeeded: ${paymentIntent.id}`)
+
+        // Track successful payment
+        try {
+          trackPaymentEvent("payment_succeeded", {
+            amount,
+            currency: "usd",
+            paymentMethod: "card",
+            subscriptionTier: "premium",
+            testMode: isTestMode,
+          })
+        } catch (error) {
+          console.error("Error tracking successful payment:", error)
+          // Continue even if tracking fails
+        }
+
         // Payment successful
         setSucceeded(true)
         setProcessing(false)
@@ -399,16 +567,22 @@ function PaymentFormContent({
         onPaymentStatusChange("success")
 
         // Store payment information for account creation
-        const paymentDetails = {
-          email,
-          name,
-          amount,
-          paymentIntentId: paymentIntent.id,
-          timestamp: new Date().toISOString(),
-          status: "completed",
-        }
+        try {
+          const paymentDetails = {
+            email,
+            name,
+            amount,
+            paymentIntentId: paymentIntent.id,
+            timestamp: new Date().toISOString(),
+            status: "completed",
+            testMode: isTestMode,
+          }
 
-        localStorage.setItem("heartsHeal_paymentInfo", JSON.stringify(paymentDetails))
+          localStorage.setItem("heartsHeal_paymentInfo", JSON.stringify(paymentDetails))
+        } catch (error) {
+          console.error("Error storing payment info:", error)
+          // Continue even if localStorage fails
+        }
 
         // Mark payment as complete
         try {
@@ -458,6 +632,7 @@ function PaymentFormContent({
               subscriptionPlan: "Premium",
               amount: `$${(amount / 100).toFixed(2)}`,
               paymentIntentId: paymentIntent.id,
+              testMode: isTestMode,
             }),
           })
 
@@ -480,28 +655,56 @@ function PaymentFormContent({
           // Don't fail the whole process if just the email fails
         }
 
-        // Show success animation
-        setShowSuccessAnimation(true)
+        // Check if component is still mounted before showing success animation
+        if (isMounted.current) {
+          // Show success animation
+          setShowSuccessAnimation(true)
+        } else {
+          // If component is unmounted, redirect directly
+          handleRedirectAfterSuccess()
+        }
       } else {
+        console.error(`Payment failed with status: ${paymentIntent.status}`)
         throw new Error(`Payment failed with status: ${paymentIntent.status}`)
       }
     } catch (err) {
       console.error("Payment error:", err)
 
-      // Update payment info status to failed
-      localStorage.setItem(
-        "heartsHeal_paymentInfo",
-        JSON.stringify({
-          email,
-          name,
-          amount,
-          timestamp: new Date().toISOString(),
-          status: "failed",
-          error: err instanceof Error ? err.message : "Unknown payment error",
-        }),
-      )
+      // Only update UI if component is still mounted
+      if (!isMounted.current) return
 
-      const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred"
+      // Track failed payment
+      try {
+        trackPaymentEvent("payment_failed", {
+          amount,
+          currency: "usd",
+          errorType: err instanceof Error ? err.constructor.name : "Unknown",
+          errorMessage: err instanceof Error ? err.message : "Unknown payment error",
+          testMode: isTestMode,
+        })
+      } catch (trackError) {
+        console.error("Error tracking failed payment:", trackError)
+      }
+
+      // Update payment info status to failed
+      try {
+        localStorage.setItem(
+          "heartsHeal_paymentInfo",
+          JSON.stringify({
+            email,
+            name,
+            amount,
+            timestamp: new Date().toISOString(),
+            status: "failed",
+            error: err instanceof Error ? err.message : "Unknown payment error",
+            testMode: isTestMode,
+          }),
+        )
+      } catch (storageError) {
+        console.error("Error storing payment failure info:", storageError)
+      }
+
+      const errorMessage = getUserFriendlyErrorMessage(err)
       setError(errorMessage)
       setProcessing(false)
       onPaymentStatusChange("error", errorMessage)
@@ -554,6 +757,7 @@ function PaymentFormContent({
       </AnimatePresence>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        <TestModeBanner />
         {error && (
           <Alert className="border-red-200 bg-red-50">
             <AlertTriangle className="h-4 w-4 text-red-600 mr-2" />
@@ -620,9 +824,41 @@ function PaymentFormContent({
             {cardError && <p className="text-sm text-red-600 mt-1">{cardError}</p>}
           </div>
 
+          {isTestMode && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fillTestCard("success")}
+                className="text-xs bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+              >
+                Test: Success Card
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fillTestCard("decline")}
+                className="text-xs bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+              >
+                Test: Decline Card
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fillTestCard("insufficient_funds")}
+                className="text-xs bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100"
+              >
+                Test: Insufficient Funds
+              </Button>
+            </div>
+          )}
+
           <Button
             type="submit"
-            disabled={!stripe || processing || !formValidated}
+            disabled={!stripe || processing || !formValidated || !cardElementReady}
             className="w-full bg-purple-600 hover:bg-purple-700 text-white"
           >
             {processing ? (
@@ -631,7 +867,7 @@ function PaymentFormContent({
                 Processing...
               </span>
             ) : (
-              `Pay $${(amount / 100).toFixed(2)}`
+              `Pay $${(amount / 100).toFixed(2)}${isTestMode ? " (Test Mode)" : ""}`
             )}
           </Button>
         </div>
