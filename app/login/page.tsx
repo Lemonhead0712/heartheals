@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/logo"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react"
+import { AlertCircle, ArrowLeft, Loader2, Eye, EyeOff, Check, X } from "lucide-react"
 import Link from "next/link"
 import { PageContainer } from "@/components/page-container"
 import { useAuth } from "@/contexts/auth-context"
@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast"
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [passwordVisible, setPasswordVisible] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<{
     email?: string
@@ -61,6 +62,17 @@ export default function LoginPage() {
       clearAuthError()
     }
   }, [clearAuthError])
+
+  // Validate email in real-time
+  useEffect(() => {
+    if (email) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setFieldErrors((prev) => ({ ...prev, email: "Please enter a valid email address" }))
+      } else {
+        setFieldErrors((prev) => ({ ...prev, email: undefined }))
+      }
+    }
+  }, [email])
 
   const validateForm = (): boolean => {
     const errors: {
@@ -155,7 +167,7 @@ export default function LoginPage() {
 
           <motion.div variants={item}>
             <Card className="border-purple-200 bg-white/90 backdrop-blur-sm shadow-md">
-              <CardHeader>
+              <CardHeader className="pb-4">
                 <CardTitle className="text-2xl font-bold text-center text-purple-800">Welcome Back</CardTitle>
                 <CardDescription className="text-center text-purple-600">
                   {isFromPayment
@@ -163,7 +175,7 @@ export default function LoginPage() {
                     : "Log in to continue your wellness journey"}
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-5">
                 {authError && (
                   <Alert className="mb-4 border-red-200 bg-red-50 text-red-800">
                     <AlertCircle className="h-4 w-4 text-red-600 mr-2" />
@@ -180,67 +192,105 @@ export default function LoginPage() {
                   </Alert>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-purple-700">
+                    <Label htmlFor="email" className="text-purple-700 font-medium">
                       Email
                     </Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      className={`border-purple-200 focus:border-purple-400 focus:ring-purple-400 ${
-                        fieldErrors.email ? "border-red-300" : ""
-                      }`}
-                      disabled={isSubmitting || !!searchParams.get("email")}
-                      aria-invalid={fieldErrors.email ? "true" : "false"}
-                    />
-                    {fieldErrors.email && <p className="text-sm text-red-600 mt-1">{fieldErrors.email}</p>}
+                    <div className="relative">
+                      <Input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className={`border-purple-200 focus:border-purple-400 focus:ring-purple-400 ${
+                          fieldErrors.email ? "border-red-300" : email ? "border-green-300" : ""
+                        }`}
+                        disabled={!!searchParams.get("email") || isSubmitting}
+                        aria-invalid={fieldErrors.email ? "true" : "false"}
+                        placeholder="your.email@example.com"
+                      />
+                      {email && !fieldErrors.email && (
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-500">
+                          <Check size={18} />
+                        </div>
+                      )}
+                    </div>
+                    {fieldErrors.email && (
+                      <div className="flex items-center text-sm text-red-600 mt-1">
+                        <X size={14} className="mr-1 flex-shrink-0" />
+                        <span>{fieldErrors.email}</span>
+                      </div>
+                    )}
                   </div>
+
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <Label htmlFor="password" className="text-purple-700">
+                      <Label htmlFor="password" className="text-purple-700 font-medium">
                         Password
                       </Label>
                       <Link href="/forgot-password" className="text-xs text-purple-600 hover:underline">
                         Forgot password?
                       </Link>
                     </div>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className={`border-purple-200 focus:border-purple-400 focus:ring-purple-400 ${
-                        fieldErrors.password ? "border-red-300" : ""
-                      }`}
-                      disabled={isSubmitting}
-                      aria-invalid={fieldErrors.password ? "true" : "false"}
-                    />
-                    {fieldErrors.password && <p className="text-sm text-red-600 mt-1">{fieldErrors.password}</p>}
-                  </div>
-                  <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={isSubmitting}>
-                    {isSubmitting ? (
-                      <span className="flex items-center justify-center">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Logging in...
-                      </span>
-                    ) : (
-                      "Log In"
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={passwordVisible ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        className={`border-purple-200 focus:border-purple-400 focus:ring-purple-400 ${
+                          fieldErrors.password ? "border-red-300" : ""
+                        } pr-10`}
+                        disabled={isSubmitting}
+                        aria-invalid={fieldErrors.password ? "true" : "false"}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setPasswordVisible(!passwordVisible)}
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-purple-600 focus:outline-none"
+                        aria-label={passwordVisible ? "Hide password" : "Show password"}
+                        tabIndex={0}
+                        disabled={isSubmitting}
+                      >
+                        {passwordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                    {fieldErrors.password && (
+                      <div className="flex items-center text-sm text-red-600 mt-1">
+                        <X size={14} className="mr-1 flex-shrink-0" />
+                        <span>{fieldErrors.password}</span>
+                      </div>
                     )}
-                  </Button>
+                  </div>
+
+                  <div className="pt-2">
+                    <Button
+                      type="submit"
+                      className="w-full bg-purple-600 hover:bg-purple-700 transition-all duration-200 h-11"
+                      disabled={isSubmitting || Object.values(fieldErrors).some(Boolean)}
+                    >
+                      {isSubmitting ? (
+                        <span className="flex items-center justify-center">
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Logging in...
+                        </span>
+                      ) : (
+                        "Log In"
+                      )}
+                    </Button>
+                  </div>
                 </form>
               </CardContent>
-              <CardFooter className="flex flex-col space-y-4">
+              <CardFooter className="flex flex-col space-y-4 pt-0">
                 <div className="text-sm text-center text-gray-500">
                   Don't have an account?{" "}
                   <Link
                     href={`/create-account${email ? `?email=${encodeURIComponent(email)}` : ""}`}
-                    className="text-purple-600 hover:underline"
+                    className="text-purple-600 hover:underline font-medium"
                   >
                     Sign up
                   </Link>

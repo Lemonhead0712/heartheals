@@ -12,16 +12,21 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/logo"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, ArrowLeft, CheckCircle, Loader2 } from "lucide-react"
+import { AlertCircle, ArrowLeft, CheckCircle, Loader2, Eye, EyeOff, Check, X } from "lucide-react"
 import Link from "next/link"
 import { PageContainer } from "@/components/page-container"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { useSubscription } from "@/contexts/subscription-context"
+import { Progress } from "@/components/ui/progress"
 
 // Password validation rules
 const PASSWORD_MIN_LENGTH = 6
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/
+const HAS_LOWERCASE = /[a-z]/
+const HAS_UPPERCASE = /[A-Z]/
+const HAS_NUMBER = /\d/
+const HAS_SPECIAL = /[@$!%*?&]/
 
 export default function CreateAccountPage() {
   const [email, setEmail] = useState("")
@@ -40,6 +45,14 @@ export default function CreateAccountPage() {
   const [isFromPayment, setIsFromPayment] = useState(false)
   const [paymentInfo, setPaymentInfo] = useState<any>(null)
   const [isRedirecting, setIsRedirecting] = useState(false)
+  const [passwordStrength, setPasswordStrength] = useState(0)
+  const [passwordCriteria, setPasswordCriteria] = useState({
+    length: false,
+    lowercase: false,
+    uppercase: false,
+    number: false,
+    special: false,
+  })
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClientComponentClient()
@@ -86,6 +99,54 @@ export default function CreateAccountPage() {
       console.error("Error processing URL parameters:", error)
     }
   }, [searchParams, toast])
+
+  // Validate email in real-time
+  useEffect(() => {
+    if (email) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setFieldErrors((prev) => ({ ...prev, email: "Please enter a valid email address" }))
+      } else {
+        setFieldErrors((prev) => ({ ...prev, email: undefined }))
+      }
+    }
+  }, [email])
+
+  // Validate password in real-time and calculate strength
+  useEffect(() => {
+    if (password) {
+      const criteria = {
+        length: password.length >= PASSWORD_MIN_LENGTH,
+        lowercase: HAS_LOWERCASE.test(password),
+        uppercase: HAS_UPPERCASE.test(password),
+        number: HAS_NUMBER.test(password),
+        special: HAS_SPECIAL.test(password),
+      }
+
+      setPasswordCriteria(criteria)
+
+      // Calculate password strength (0-100)
+      const criteriaCount = Object.values(criteria).filter(Boolean).length
+      setPasswordStrength(criteriaCount * 20)
+
+      if (!PASSWORD_REGEX.test(password)) {
+        setFieldErrors((prev) => ({
+          ...prev,
+          password: "Password must include uppercase, lowercase, number and special character",
+        }))
+      } else {
+        setFieldErrors((prev) => ({ ...prev, password: undefined }))
+      }
+    } else {
+      setPasswordStrength(0)
+    }
+
+    // Check if confirm password matches
+    if (confirmPassword && password !== confirmPassword) {
+      setFieldErrors((prev) => ({ ...prev, confirmPassword: "Passwords do not match" }))
+    } else if (confirmPassword) {
+      setFieldErrors((prev) => ({ ...prev, confirmPassword: undefined }))
+    }
+  }, [password, confirmPassword])
 
   const validateForm = (): boolean => {
     const errors: {
@@ -230,6 +291,13 @@ export default function CreateAccountPage() {
     }
   }
 
+  // Get password strength color
+  const getStrengthColor = () => {
+    if (passwordStrength < 40) return "bg-red-500"
+    if (passwordStrength < 80) return "bg-yellow-500"
+    return "bg-green-500"
+  }
+
   // Animation variants
   const container = {
     hidden: { opacity: 0 },
@@ -256,7 +324,7 @@ export default function CreateAccountPage() {
 
           <motion.div variants={item}>
             <Card className="border-purple-200 bg-white/90 backdrop-blur-sm shadow-md">
-              <CardHeader>
+              <CardHeader className="pb-4">
                 <CardTitle className="text-2xl font-bold text-center text-purple-800">Create Your Account</CardTitle>
                 <CardDescription className="text-center text-purple-600">
                   {isFromPayment
@@ -264,7 +332,7 @@ export default function CreateAccountPage() {
                     : "Join HeartHeals to start your wellness journey"}
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-5">
                 {error && (
                   <Alert className="mb-4 border-red-200 bg-red-50 text-red-800">
                     <AlertCircle className="h-4 w-4 text-red-600 mr-2" />
@@ -281,27 +349,41 @@ export default function CreateAccountPage() {
                   </Alert>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-purple-700">
+                    <Label htmlFor="email" className="text-purple-700 font-medium">
                       Email
                     </Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      className={`border-purple-200 focus:border-purple-400 focus:ring-purple-400 ${
-                        fieldErrors.email ? "border-red-300" : ""
-                      }`}
-                      disabled={!!searchParams.get("email") || isSubmitting || success}
-                      aria-invalid={fieldErrors.email ? "true" : "false"}
-                    />
-                    {fieldErrors.email && <p className="text-sm text-red-600 mt-1">{fieldErrors.email}</p>}
+                    <div className="relative">
+                      <Input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className={`border-purple-200 focus:border-purple-400 focus:ring-purple-400 ${
+                          fieldErrors.email ? "border-red-300" : email ? "border-green-300" : ""
+                        }`}
+                        disabled={!!searchParams.get("email") || isSubmitting || success}
+                        aria-invalid={fieldErrors.email ? "true" : "false"}
+                        placeholder="your.email@example.com"
+                      />
+                      {email && !fieldErrors.email && (
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-500">
+                          <Check size={18} />
+                        </div>
+                      )}
+                    </div>
+                    {fieldErrors.email && (
+                      <div className="flex items-center text-sm text-red-600 mt-1">
+                        <X size={14} className="mr-1 flex-shrink-0" />
+                        <span>{fieldErrors.email}</span>
+                      </div>
+                    )}
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="password" className="text-purple-700">
+                    <Label htmlFor="password" className="text-purple-700 font-medium">
                       Password
                     </Label>
                     <div className="relative">
@@ -313,7 +395,11 @@ export default function CreateAccountPage() {
                         onChange={(e) => setPassword(e.target.value)}
                         required
                         className={`border-purple-200 focus:border-purple-400 focus:ring-purple-400 ${
-                          fieldErrors.password ? "border-red-300" : ""
+                          fieldErrors.password
+                            ? "border-red-300"
+                            : password && !fieldErrors.password
+                              ? "border-green-300"
+                              : ""
                         } pr-10`}
                         disabled={isSubmitting || success}
                         aria-invalid={fieldErrors.password ? "true" : "false"}
@@ -326,53 +412,93 @@ export default function CreateAccountPage() {
                         tabIndex={0}
                         disabled={isSubmitting || success}
                       >
-                        {passwordVisible ? (
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
-                            />
-                          </svg>
-                        ) : (
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                            />
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                            />
-                          </svg>
-                        )}
+                        {passwordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     </div>
-                    {fieldErrors.password && <p className="text-sm text-red-600 mt-1">{fieldErrors.password}</p>}
-                    <p className="text-xs text-gray-500 mt-1">
-                      Password must be at least 6 characters and include uppercase, lowercase, number and special
-                      character.
-                    </p>
+
+                    {password && (
+                      <div className="mt-2 space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">Password strength</span>
+                          <span
+                            className={`font-medium ${
+                              passwordStrength < 40
+                                ? "text-red-500"
+                                : passwordStrength < 80
+                                  ? "text-yellow-500"
+                                  : "text-green-500"
+                            }`}
+                          >
+                            {passwordStrength < 40 ? "Weak" : passwordStrength < 80 ? "Medium" : "Strong"}
+                          </span>
+                        </div>
+                        <Progress value={passwordStrength} className="h-1.5" indicatorClassName={getStrengthColor()} />
+
+                        <div className="grid grid-cols-2 gap-1 text-xs mt-2">
+                          <div
+                            className={`flex items-center ${passwordCriteria.length ? "text-green-600" : "text-gray-500"}`}
+                          >
+                            {passwordCriteria.length ? (
+                              <Check size={12} className="mr-1" />
+                            ) : (
+                              <X size={12} className="mr-1" />
+                            )}
+                            <span>At least 6 characters</span>
+                          </div>
+                          <div
+                            className={`flex items-center ${passwordCriteria.lowercase ? "text-green-600" : "text-gray-500"}`}
+                          >
+                            {passwordCriteria.lowercase ? (
+                              <Check size={12} className="mr-1" />
+                            ) : (
+                              <X size={12} className="mr-1" />
+                            )}
+                            <span>Lowercase letter</span>
+                          </div>
+                          <div
+                            className={`flex items-center ${passwordCriteria.uppercase ? "text-green-600" : "text-gray-500"}`}
+                          >
+                            {passwordCriteria.uppercase ? (
+                              <Check size={12} className="mr-1" />
+                            ) : (
+                              <X size={12} className="mr-1" />
+                            )}
+                            <span>Uppercase letter</span>
+                          </div>
+                          <div
+                            className={`flex items-center ${passwordCriteria.number ? "text-green-600" : "text-gray-500"}`}
+                          >
+                            {passwordCriteria.number ? (
+                              <Check size={12} className="mr-1" />
+                            ) : (
+                              <X size={12} className="mr-1" />
+                            )}
+                            <span>Number</span>
+                          </div>
+                          <div
+                            className={`flex items-center ${passwordCriteria.special ? "text-green-600" : "text-gray-500"}`}
+                          >
+                            {passwordCriteria.special ? (
+                              <Check size={12} className="mr-1" />
+                            ) : (
+                              <X size={12} className="mr-1" />
+                            )}
+                            <span>Special character</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {fieldErrors.password && (
+                      <div className="flex items-center text-sm text-red-600 mt-1">
+                        <X size={14} className="mr-1 flex-shrink-0" />
+                        <span>{fieldErrors.password}</span>
+                      </div>
+                    )}
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="confirmPassword" className="text-purple-700">
+                    <Label htmlFor="confirmPassword" className="text-purple-700 font-medium">
                       Confirm Password
                     </Label>
                     <div className="relative">
@@ -384,7 +510,11 @@ export default function CreateAccountPage() {
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         required
                         className={`border-purple-200 focus:border-purple-400 focus:ring-purple-400 ${
-                          fieldErrors.confirmPassword ? "border-red-300" : ""
+                          fieldErrors.confirmPassword
+                            ? "border-red-300"
+                            : confirmPassword && !fieldErrors.confirmPassword
+                              ? "border-green-300"
+                              : ""
                         } pr-10`}
                         disabled={isSubmitting || success}
                         aria-invalid={fieldErrors.confirmPassword ? "true" : "false"}
@@ -397,69 +527,45 @@ export default function CreateAccountPage() {
                         tabIndex={0}
                         disabled={isSubmitting || success}
                       >
-                        {confirmPasswordVisible ? (
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
-                            />
-                          </svg>
-                        ) : (
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                            />
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                            />
-                          </svg>
-                        )}
+                        {confirmPasswordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
+
+                      {confirmPassword && !fieldErrors.confirmPassword && (
+                        <div className="absolute right-10 top-1/2 transform -translate-y-1/2 text-green-500">
+                          <Check size={18} />
+                        </div>
+                      )}
                     </div>
                     {fieldErrors.confirmPassword && (
-                      <p className="text-sm text-red-600 mt-1">{fieldErrors.confirmPassword}</p>
+                      <div className="flex items-center text-sm text-red-600 mt-1">
+                        <X size={14} className="mr-1 flex-shrink-0" />
+                        <span>{fieldErrors.confirmPassword}</span>
+                      </div>
                     )}
                   </div>
-                  <Button
-                    type="submit"
-                    className="w-full bg-purple-600 hover:bg-purple-700"
-                    disabled={isSubmitting || success}
-                  >
-                    {isSubmitting ? (
-                      <span className="flex items-center justify-center">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating Account...
-                      </span>
-                    ) : (
-                      "Create Account"
-                    )}
-                  </Button>
+
+                  <div className="pt-2">
+                    <Button
+                      type="submit"
+                      className="w-full bg-purple-600 hover:bg-purple-700 transition-all duration-200 h-11"
+                      disabled={isSubmitting || success || Object.values(fieldErrors).some(Boolean)}
+                    >
+                      {isSubmitting ? (
+                        <span className="flex items-center justify-center">
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating Account...
+                        </span>
+                      ) : (
+                        "Create Account"
+                      )}
+                    </Button>
+                  </div>
                 </form>
               </CardContent>
-              <CardFooter className="flex flex-col space-y-4">
+              <CardFooter className="flex flex-col space-y-4 pt-0">
                 <div className="text-sm text-center text-gray-500">
                   Already have an account?{" "}
-                  <Link href="/login" className="text-purple-600 hover:underline">
+                  <Link href="/login" className="text-purple-600 hover:underline font-medium">
                     Sign in
                   </Link>
                 </div>
