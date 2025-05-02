@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,11 +10,20 @@ import { Logo } from "@/components/logo"
 import { BottomNav } from "@/components/bottom-nav"
 import { CheckCircle2, ChevronLeft, Loader2 } from "lucide-react"
 
+import { useSubscription } from "@/contexts/subscription-context"
+import { useAuth } from "@/contexts/auth-context"
+import { markPaymentComplete, getActivationStatus } from "@/lib/activation-utils"
+
 export default function SubscriptionSuccessPage() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [isVerifying, setIsVerifying] = useState(true)
   const [isSuccess, setIsSuccess] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const [activationStatus, setActivationStatus] = useState<any>(null)
+  const { immediatelyActivatePremium } = useSubscription()
+  const { user, isAuthenticated } = useAuth()
 
   useEffect(() => {
     // Check if the payment was successful
@@ -37,6 +46,23 @@ export default function SubscriptionSuccessPage() {
         // For demo purposes, always succeed
         setIsSuccess(true)
         setIsVerifying(false)
+
+        if (isSuccess) {
+          // Immediately activate premium features if user is logged in
+          if (isAuthenticated) {
+            immediatelyActivatePremium()
+
+            // Mark payment as complete in activation flow
+            markPaymentComplete({
+              paymentId: paymentIntentId || undefined,
+              // We don't have amount info here, but that's okay
+            })
+
+            // Check activation status
+            const status = getActivationStatus()
+            setActivationStatus(status)
+          }
+        }
       } catch (error) {
         setIsSuccess(false)
         setIsVerifying(false)
@@ -45,7 +71,7 @@ export default function SubscriptionSuccessPage() {
     }
 
     verifyPayment()
-  }, [searchParams])
+  }, [searchParams, isAuthenticated, immediatelyActivatePremium])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#fce4ec] via-[#e0f7fa] to-[#ede7f6] pb-20">
@@ -106,6 +132,22 @@ export default function SubscriptionSuccessPage() {
                 <p className="text-sm text-purple-600">
                   You can manage your subscription at any time from your account settings.
                 </p>
+              </motion.div>
+            )}
+
+            {isSuccess && isAuthenticated && (
+              <motion.div
+                className="mt-4 text-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.7 }}
+              >
+                <Button
+                  className="bg-purple-600 hover:bg-purple-700"
+                  onClick={() => router.push("/activation-success")}
+                >
+                  View Your Premium Features
+                </Button>
               </motion.div>
             )}
           </CardContent>

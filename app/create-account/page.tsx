@@ -19,6 +19,13 @@ import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { useSubscription } from "@/contexts/subscription-context"
 import { Progress } from "@/components/ui/progress"
+import {
+  getActivationStatus,
+  markAccountCreated,
+  checkExistingPayment,
+  getStoredPaymentDetails,
+} from "@/lib/activation-utils"
+import { ActivationSuccess } from "@/components/activation-success"
 
 // Password validation rules
 const PASSWORD_MIN_LENGTH = 6
@@ -53,6 +60,8 @@ export default function CreateAccountPage() {
     number: false,
     special: false,
   })
+  const [activationComplete, setActivationComplete] = useState(false)
+  const [activationDetails, setActivationDetails] = useState<any>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClientComponentClient()
@@ -148,6 +157,27 @@ export default function CreateAccountPage() {
     }
   }, [password, confirmPassword])
 
+  useEffect(() => {
+    // Check activation status
+    const activationStatus = getActivationStatus()
+
+    // If payment is complete but account not yet created, we'll handle that in form submission
+    if (activationStatus.paymentComplete && activationStatus.accountCreated && activationStatus.activationComplete) {
+      // Both payment and account creation are complete
+      setActivationComplete(true)
+      setActivationDetails(activationStatus.paymentDetails || {})
+    }
+
+    // Check for existing payment even if activation status doesn't show it
+    if (!activationStatus.paymentComplete && checkExistingPayment()) {
+      const paymentDetails = getStoredPaymentDetails()
+      if (paymentDetails) {
+        setPaymentInfo(paymentDetails)
+        setIsFromPayment(true)
+      }
+    }
+  }, [])
+
   const validateForm = (): boolean => {
     const errors: {
       email?: string
@@ -215,6 +245,17 @@ export default function CreateAccountPage() {
       // If from payment, update subscription status
       if (isFromPayment) {
         updateSubscriptionStatus("premium", true)
+
+        // Mark account creation as complete in activation flow
+        markAccountCreated()
+
+        // Check if both payment and account creation are now complete
+        const updatedStatus = getActivationStatus()
+        if (updatedStatus.paymentComplete && updatedStatus.accountCreated) {
+          // Both steps are complete, show activation success
+          setActivationComplete(true)
+          setActivationDetails(updatedStatus.paymentDetails || {})
+        }
       }
 
       // Automatically log the user in
@@ -222,11 +263,14 @@ export default function CreateAccountPage() {
         const loginSuccess = await login(email, password)
 
         if (loginSuccess) {
-          toast({
-            title: "Account Created",
-            description: "Your account has been created and you've been logged in automatically.",
-            variant: "default",
-          })
+          // Only show toast if not showing activation success
+          if (!activationComplete) {
+            toast({
+              title: "Account Created",
+              description: "Your account has been created and you've been logged in automatically.",
+              variant: "default",
+            })
+          }
 
           // Clear payment info from localStorage
           localStorage.removeItem("heartsHeal_paymentInfo")
@@ -234,20 +278,23 @@ export default function CreateAccountPage() {
           // Set redirecting state
           setIsRedirecting(true)
 
-          // Redirect based on source
-          if (isFromPayment) {
-            // Check for stored redirect destination
-            const redirectDestination = localStorage.getItem("heartsHeal_postSubscriptionRedirect")
-            if (redirectDestination) {
-              localStorage.removeItem("heartsHeal_postSubscriptionRedirect")
-              router.push(redirectDestination)
+          // Only redirect if not showing activation success
+          if (!activationComplete) {
+            // Redirect based on source
+            if (isFromPayment) {
+              // Check for stored redirect destination
+              const redirectDestination = localStorage.getItem("heartsHeal_postSubscriptionRedirect")
+              if (redirectDestination) {
+                localStorage.removeItem("heartsHeal_postSubscriptionRedirect")
+                router.push(redirectDestination)
+              } else {
+                // Default to dashboard
+                router.push("/")
+              }
             } else {
-              // Default to dashboard
+              // Regular account creation flow
               router.push("/")
             }
-          } else {
-            // Regular account creation flow
-            router.push("/")
           }
         } else {
           // If auto-login fails, show message and redirect to login page
@@ -312,6 +359,24 @@ export default function CreateAccountPage() {
   const item = {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0 },
+  }
+
+  if (activationComplete) {
+    return (
+      <PageContainer>
+        <div className="min-h-screen bg-gradient-to-br from-[#fce4ec] via-[#e0f7fa] to-[#ede7f6] flex flex-col items-center justify-center p-4">
+          <motion.div className="w-full max-w-md" initial="hidden" animate="show" variants={container}>
+            <motion.div className="flex justify-center mb-6" variants={item}>
+              <Logo size="large" animate={true} />
+            </motion.div>
+
+            <motion.div variants={item}>
+              <ActivationSuccess userName={email.split("@")[0]} redirectPath="/" />
+            </motion.div>
+          </motion.div>
+        </div>
+      </PageContainer>
+    )
   }
 
   return (

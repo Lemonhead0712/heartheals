@@ -97,18 +97,39 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
 
         const planName = product?.name || "Premium"
         const amount = price ? `$${(price.unit_amount! / 100).toFixed(2)}` : "$5.00"
+        const interval = price?.recurring?.interval || "month"
+        const intervalCount = price?.recurring?.interval_count || 1
+
+        // Format the billing period
+        const billingPeriod = intervalCount === 1 ? interval : `${intervalCount} ${interval}s`
 
         // Send confirmation email
         await sendSubscriptionConfirmationEmail({
           email,
           userName: name || "Valued User",
           subscriptionPlan: planName,
-          amount: `${amount} / month`,
+          amount: `${amount} / ${billingPeriod}`,
+          subscriptionId: subscription.id,
+          startDate: new Date(subscription.current_period_start * 1000).toLocaleDateString(),
+          endDate: new Date(subscription.current_period_end * 1000).toLocaleDateString(),
         })
+
+        // In a real app, you would update your database with the subscription details
+        // For example:
+        // await db.subscriptions.create({
+        //   userId: getUserIdFromEmail(email),
+        //   stripeCustomerId: customerId,
+        //   stripeSubscriptionId: subscription.id,
+        //   planId: productId,
+        //   status: subscription.status,
+        //   currentPeriodStart: new Date(subscription.current_period_start * 1000),
+        //   currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        //   createdAt: new Date(),
+        // })
       }
     }
   } catch (error) {
-    console.error("Error sending subscription confirmation email:", error)
+    console.error("Error processing subscription creation:", error)
   }
 }
 
@@ -123,7 +144,6 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 }
 
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
-  // In a real app, you would update your database to record the successful payment
   console.log(`Invoice payment succeeded: ${invoice.id}`)
 
   // If this is a subscription invoice, we might want to send a receipt
@@ -131,13 +151,52 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
     try {
       const stripe = getStripeInstance()
       const customerId = invoice.customer as string
+      const subscriptionId = invoice.subscription as string
 
       const customer = await stripe.customers.retrieve(customerId)
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId)
 
       if (customer && !customer.deleted && customer.email) {
-        // Here you could send a payment receipt email
-        // This is different from the subscription confirmation
-        console.log(`Could send payment receipt to ${customer.email}`)
+        // Get payment details
+        const paymentIntentId = invoice.payment_intent as string
+        let paymentMethod = null
+
+        if (paymentIntentId) {
+          const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
+          if (paymentIntent.payment_method) {
+            paymentMethod = await stripe.paymentMethods.retrieve(paymentIntent.payment_method as string)
+          }
+        }
+
+        // Format card details if available
+        let paymentDetails = "Payment method not available"
+        if (paymentMethod && paymentMethod.type === "card" && paymentMethod.card) {
+          const card = paymentMethod.card
+          paymentDetails = `${card.brand.toUpperCase()} ending in ${card.last4}`
+        }
+
+        // Here you would send a payment receipt email
+        // For example:
+        // await sendPaymentReceiptEmail({
+        //   email: customer.email,
+        //   userName: customer.name || "Valued User",
+        //   invoiceId: invoice.id,
+        //   amount: `$${(invoice.amount_paid / 100).toFixed(2)}`,
+        //   paymentDate: new Date(invoice.created * 1000).toLocaleDateString(),
+        //   paymentMethod: paymentDetails,
+        //   subscriptionPlan: subscription.items.data[0]?.price.nickname || "Premium",
+        // })
+
+        // In a real app, you would update your database with the payment details
+        // For example:
+        // await db.payments.create({
+        //   userId: getUserIdFromEmail(customer.email),
+        //   stripeInvoiceId: invoice.id,
+        //   stripePaymentIntentId: paymentIntentId,
+        //   amount: invoice.amount_paid,
+        //   status: 'succeeded',
+        //   createdAt: new Date(invoice.created * 1000),
+        // })
       }
     } catch (error) {
       console.error("Error processing invoice payment success:", error)

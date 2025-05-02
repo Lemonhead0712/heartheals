@@ -12,6 +12,13 @@ import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { useHapticContext } from "@/contexts/haptic-context"
 import { HapticButton } from "@/components/ui/haptic-button"
+import { Button } from "@/components/ui/button"
+
+// Fallback haptic functions when context is not available
+const fallbackHaptic = {
+  haptic: () => {},
+  patternHaptic: () => {},
+}
 
 export function QuickEmotionalLog() {
   const [selectedEmoji, setSelectedEmoji] = useState("😊")
@@ -19,10 +26,23 @@ export function QuickEmotionalLog() {
   const [notes, setNotes] = useState("")
   const [intensity, setIntensity] = useState(5)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [hapticAvailable, setHapticAvailable] = useState(true)
 
   const { addEntry } = useEmotionLogs()
   const { toast } = useToast()
-  const { haptic, patternHaptic } = useHapticContext()
+
+  // Try to use the haptic context, but provide fallbacks if it fails
+  let hapticContext
+  try {
+    hapticContext = useHapticContext()
+    if (!hapticAvailable) setHapticAvailable(true)
+  } catch (error) {
+    console.error("Haptic context not available:", error)
+    hapticContext = fallbackHaptic
+    setHapticAvailable(false)
+  }
+
+  const { haptic, patternHaptic } = hapticContext
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -33,7 +53,7 @@ export function QuickEmotionalLog() {
         description: "Tell us how you're feeling right now",
         variant: "destructive",
       })
-      patternHaptic("error")
+      if (hapticAvailable) patternHaptic("error")
       return
     }
 
@@ -58,9 +78,9 @@ export function QuickEmotionalLog() {
         description: "Your emotional state has been recorded",
       })
 
-      patternHaptic("success")
+      if (hapticAvailable) patternHaptic("success")
     } else {
-      patternHaptic("error")
+      if (hapticAvailable) patternHaptic("error")
     }
 
     setIsSubmitting(false)
@@ -68,19 +88,22 @@ export function QuickEmotionalLog() {
 
   const handleEmotionSelect = (e: string) => {
     setEmotion(e)
-    haptic("light")
+    if (hapticAvailable) haptic("light")
   }
 
   const handleIntensityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setIntensity(Number.parseInt(e.target.value))
     // Only trigger haptic on significant changes to avoid too much vibration
-    if (Math.abs(intensity - Number.parseInt(e.target.value)) >= 2) {
+    if (hapticAvailable && Math.abs(intensity - Number.parseInt(e.target.value)) >= 2) {
       haptic("light")
     }
   }
 
   // Common emotions for quick selection
   const commonEmotions = ["Happy", "Calm", "Sad", "Anxious", "Excited", "Tired", "Frustrated", "Grateful"]
+
+  // Use regular Button if haptic is not available
+  const ActionButton = hapticAvailable ? HapticButton : Button
 
   return (
     <Card className="h-full border-pink-200 bg-white/80 backdrop-blur-sm shadow-md">
@@ -98,7 +121,7 @@ export function QuickEmotionalLog() {
             <label className="text-sm font-medium text-pink-700 sm:text-xs">I'm feeling...</label>
             <div className="flex flex-wrap gap-1.5 mb-2 sm:gap-1 sm:mb-1">
               {commonEmotions.map((e) => (
-                <HapticButton
+                <ActionButton
                   key={e}
                   type="button"
                   variant={emotion === e ? "default" : "outline"}
@@ -108,10 +131,10 @@ export function QuickEmotionalLog() {
                       : "border-pink-200 text-pink-700 hover:bg-pink-100"
                   }`}
                   onClick={() => handleEmotionSelect(e)}
-                  hapticIntensity="light"
+                  hapticIntensity={hapticAvailable ? "light" : undefined}
                 >
                   {e}
-                </HapticButton>
+                </ActionButton>
               ))}
             </div>
             <input
@@ -153,11 +176,11 @@ export function QuickEmotionalLog() {
           </div>
 
           <div className="flex justify-between pt-1 sm:pt-0.5 sm:mt-1">
-            <HapticButton
+            <ActionButton
               type="submit"
               className="bg-pink-600 hover:bg-pink-700 sm:text-xs sm:py-1.5"
               disabled={!emotion.trim() || isSubmitting}
-              hapticPattern="success"
+              hapticPattern={hapticAvailable ? "success" : undefined}
             >
               {isSubmitting ? (
                 <>Saving...</>
@@ -167,19 +190,19 @@ export function QuickEmotionalLog() {
                   Save Entry
                 </>
               )}
-            </HapticButton>
+            </ActionButton>
 
-            <HapticButton
+            <ActionButton
               asChild
               variant="outline"
               className="border-pink-200 text-pink-700 hover:bg-pink-50 sm:text-xs sm:py-1.5"
-              hapticIntensity="light"
+              hapticIntensity={hapticAvailable ? "light" : undefined}
             >
               <Link href="/emotional-log">
                 View All Entries
                 <ArrowRight className="ml-2 h-4 w-4 sm:h-3 sm:w-3" />
               </Link>
-            </HapticButton>
+            </ActionButton>
           </div>
         </form>
       </CardContent>

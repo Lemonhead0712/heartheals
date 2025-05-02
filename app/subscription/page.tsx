@@ -209,25 +209,6 @@ export default function SubscriptionPage() {
             </motion.div>
           )}
 
-          {/* Stripe Configuration Warning */}
-          {!stripeConfigValid && (
-            <motion.div
-              className="mb-6"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <Alert className="border-amber-200 bg-amber-50/80 backdrop-blur-sm">
-                <Info className="h-4 w-4 text-amber-600" />
-                <AlertTitle className="text-amber-800">Payment System Notice</AlertTitle>
-                <AlertDescription className="text-amber-700">
-                  The payment system is currently in test mode. You can try the subscription flow, but no actual charges
-                  will be made.
-                </AlertDescription>
-              </Alert>
-            </motion.div>
-          )}
-
           {/* Payment Status Messages */}
           {paymentStatus === "error" && (
             <motion.div

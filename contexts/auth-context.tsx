@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { useRouter, usePathname } from "next/navigation"
 import { useSubscription } from "./subscription-context"
 import { useToast } from "@/hooks/use-toast"
+import { getActivationStatus, markAccountCreated } from "@/lib/activation-utils"
 
 type User = {
   id: string
@@ -159,6 +160,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Update state
       setUser(newUser)
+
+      // Check if this completes an activation flow
+      const activationStatus = getActivationStatus()
+      if (activationStatus.paymentComplete && !activationStatus.accountCreated) {
+        // Mark account creation as complete
+        markAccountCreated()
+
+        // If both steps are now complete, redirect to activation success
+        const updatedStatus = getActivationStatus()
+        if (updatedStatus.paymentComplete && updatedStatus.accountCreated) {
+          // Both payment and account creation are complete
+          // Redirect to activation success page
+          setTimeout(() => {
+            try {
+              router.push("/activation-success")
+              return true // Early return to prevent other redirects
+            } catch (redirectError) {
+              console.error("Error during activation redirect:", redirectError)
+              // Fallback to window.location
+              window.location.href = "/activation-success"
+              return true
+            }
+          }, 100)
+          return true
+        }
+      }
 
       // Check if this login is after payment
       try {

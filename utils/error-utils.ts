@@ -58,7 +58,9 @@ export async function parseApiError(response: Response): Promise<string> {
   }
 }
 
-// Safe localStorage access
+/**
+ * Safely interact with localStorage to prevent errors
+ */
 export function safeLocalStorage(key: string, action: "get" | "set" | "remove", value?: any): any {
   try {
     if (typeof window === "undefined") {
@@ -80,12 +82,30 @@ export function safeLocalStorage(key: string, action: "get" | "set" | "remove", 
   }
 }
 
-// Safe JSON parse
+/**
+ * Safely parse JSON with fallback
+ */
 export function safeJsonParse<T>(json: string, fallback: T): T {
   try {
     return JSON.parse(json) as T
   } catch (error) {
     logError("JSON.parse", error)
     return fallback
+  }
+}
+
+/**
+ * Handle API errors consistently
+ */
+export function handleApiError(error: unknown): { message: string; details?: string } {
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      details: error.stack,
+    }
+  } else if (typeof error === "string") {
+    return { message: error }
+  } else {
+    return { message: "An unknown error occurred" }
   }
 }

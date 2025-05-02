@@ -282,6 +282,7 @@ function PaymentFormContent({
   const [emailSent, setEmailSent] = useState(true)
   const [emailDetails, setEmailDetails] = useState("")
   const [formValidated, setFormValidated] = useState(false)
+  const [paymentComplete, setPaymentComplete] = useState(false)
 
   // Validate form inputs
   useEffect(() => {
@@ -355,89 +356,135 @@ function PaymentFormContent({
     onPaymentStatusChange("processing")
 
     try {
-      // Store payment information for account creation
-      localStorage.setItem(
-        "heartsHeal_paymentInfo",
-        JSON.stringify({
+      // Create payment intent on the server
+      const createPaymentResponse = await fetch("/api/subscription/create-payment-intent", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          amount,
           email,
           name,
-          amount,
-          timestamp: new Date().toISOString(),
-          status: "processing",
         }),
-      )
+      })
 
-      // For demo purposes, we'll simulate a successful payment without actually charging
-      // In a real app, you would create a payment intent on the server and confirm it here
-
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      // Simulate successful payment
-      setSucceeded(true)
-      setProcessing(false)
-      onPaymentStatusChange("success")
-
-      // Update payment info status
-      localStorage.setItem(
-        "heartsHeal_paymentInfo",
-        JSON.stringify({
-          email,
-          name,
-          amount,
-          timestamp: new Date().toISOString(),
-          status: "completed",
-        }),
-      )
-
-      // Update subscription status
-      const expiryDate = new Date()
-      expiryDate.setMonth(expiryDate.getMonth() + 1) // Set expiry to 1 month from now
-
-      setTier("premium")
-      setIsActive(true)
-      setExpiresAt(expiryDate)
-
-      // Send confirmation email
-      try {
-        const response = await fetch("/api/subscription/send-confirmation", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email,
-            userName: name || "Valued User",
-            subscriptionPlan: "Premium",
-            amount: `$${(amount / 100).toFixed(2)}`,
-          }),
-        })
-
-        if (!response.ok) {
-          throw new Error(`Email API responded with status: ${response.status}`)
-        }
-
-        const emailResult = await response.json()
-
-        // Check if email was sent successfully
-        if (!emailResult.success || emailResult.emailSent === false) {
-          console.warn("Email sending issue:", emailResult.warning || "Unknown email issue")
-          setEmailSent(false)
-          setEmailDetails(emailResult.details || emailResult.warning || "Email delivery failed")
-        } else if (emailResult.devMode) {
-          // Handle development mode
-          console.log("Email logged in development mode:", emailResult.message)
-          setEmailSent(true)
-        }
-      } catch (emailError) {
-        console.error("Error sending confirmation email:", emailError)
-        setEmailSent(false)
-        setEmailDetails(emailError instanceof Error ? emailError.message : "Error connecting to email service")
-        // Don't fail the whole process if just the email fails
+      if (!createPaymentResponse.ok) {
+        const errorData = await createPaymentResponse.json()
+        throw new Error(errorData.error || "Failed to create payment intent")
       }
 
-      // Show success animation
-      setShowSuccessAnimation(true)
+      const { clientSecret } = await createPaymentResponse.json()
+
+      // Confirm the payment with Stripe
+      const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: {
+            name,
+            email,
+          },
+        },
+      })
+
+      if (confirmError) {
+        throw new Error(confirmError.message || "Payment confirmation failed")
+      }
+
+      if (paymentIntent.status === "succeeded") {
+        // Payment successful
+        setSucceeded(true)
+        setProcessing(false)
+        setPaymentComplete(true)
+        onPaymentStatusChange("success")
+
+        // Store payment information for account creation
+        const paymentDetails = {
+          email,
+          name,
+          amount,
+          paymentIntentId: paymentIntent.id,
+          timestamp: new Date().toISOString(),
+          status: "completed",
+        }
+
+        localStorage.setItem("heartsHeal_paymentInfo", JSON.stringify(paymentDetails))
+
+        // Mark payment as complete
+        try {
+          // We'll use a regular import instead of dynamic import to avoid syntax issues
+          // This function would be imported at the top of the file in a real implementation
+          const markPaymentComplete = (details: { paymentId: string; amount: number; method: string }) => {
+            // Store payment completion status
+            localStorage.setItem(
+              "heartsHeal_paymentComplete",
+              JSON.stringify({
+                ...details,
+                timestamp: new Date().toISOString(),
+                email,
+                name,
+              }),
+            )
+          }
+
+          markPaymentComplete({
+            paymentId: paymentIntent.id,
+            amount,
+            method: "card",
+          })
+        } catch (markError) {
+          console.error("Error marking payment as complete:", markError)
+          // Continue with the flow even if this fails
+        }
+
+        // Update subscription status
+        const expiryDate = new Date()
+        expiryDate.setMonth(expiryDate.getMonth() + 1) // Set expiry to 1 month from now
+
+        setTier("premium")
+        setIsActive(true)
+        setExpiresAt(expiryDate)
+
+        // Send confirmation email
+        try {
+          const response = await fetch("/api/subscription/send-confirmation", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email,
+              userName: name || "Valued User",
+              subscriptionPlan: "Premium",
+              amount: `$${(amount / 100).toFixed(2)}`,
+              paymentIntentId: paymentIntent.id,
+            }),
+          })
+
+          if (!response.ok) {
+            throw new Error(`Email API responded with status: ${response.status}`)
+          }
+
+          const emailResult = await response.json()
+
+          // Check if email was sent successfully
+          if (!emailResult.success || emailResult.emailSent === false) {
+            console.warn("Email sending issue:", emailResult.warning || "Unknown email issue")
+            setEmailSent(false)
+            setEmailDetails(emailResult.details || emailResult.warning || "Email delivery failed")
+          }
+        } catch (emailError) {
+          console.error("Error sending confirmation email:", emailError)
+          setEmailSent(false)
+          setEmailDetails(emailError instanceof Error ? emailError.message : "Error connecting to email service")
+          // Don't fail the whole process if just the email fails
+        }
+
+        // Show success animation
+        setShowSuccessAnimation(true)
+      } else {
+        throw new Error(`Payment failed with status: ${paymentIntent.status}`)
+      }
     } catch (err) {
       console.error("Payment error:", err)
 
@@ -507,24 +554,6 @@ function PaymentFormContent({
       </AnimatePresence>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-md">
-          <h4 className="text-sm font-medium text-blue-800 mb-2">Test Credit Cards</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-            <div className="flex items-center">
-              <span className="inline-block w-16 bg-green-100 text-green-800 text-center rounded-sm mr-2 py-0.5">
-                Success
-              </span>
-              <span className="text-blue-700">4242 4242 4242 4242</span>
-            </div>
-            <div className="flex items-center">
-              <span className="inline-block w-16 bg-red-100 text-red-800 text-center rounded-sm mr-2 py-0.5">
-                Declined
-              </span>
-              <span className="text-blue-700">4000 0000 0000 0002</span>
-            </div>
-          </div>
-        </div>
-
         {error && (
           <Alert className="border-red-200 bg-red-50">
             <AlertTriangle className="h-4 w-4 text-red-600 mr-2" />

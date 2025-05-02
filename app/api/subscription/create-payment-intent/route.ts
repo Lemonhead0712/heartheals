@@ -16,12 +16,19 @@ const getStripeInstance = () => {
 
 export async function POST(request: Request) {
   try {
-    const { amount } = await request.json()
+    const { amount, email, name } = await request.json()
 
-    // Validate the amount
+    // Validate the required fields
     if (!amount || amount < 50) {
-      // Minimum amount is $0.50
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 })
+    }
+
+    if (!email || !email.includes("@")) {
+      return NextResponse.json({ error: "Valid email is required" }, { status: 400 })
+    }
+
+    if (!name) {
+      return NextResponse.json({ error: "Name is required" }, { status: 400 })
     }
 
     // Get Stripe instance
@@ -41,9 +48,19 @@ export async function POST(request: Request) {
         automatic_payment_methods: {
           enabled: true,
         },
+        metadata: {
+          email,
+          name,
+          product: "HeartHeals Premium Subscription",
+        },
+        receipt_email: email,
+        description: "HeartHeals Premium Subscription",
       })
 
-      return NextResponse.json({ clientSecret: paymentIntent.client_secret })
+      return NextResponse.json({
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id,
+      })
     } catch (error) {
       // Handle Stripe API errors
       if (error instanceof Stripe.errors.StripeError) {
@@ -55,6 +72,14 @@ export async function POST(request: Request) {
             { error: "Payment service authentication failed. Please check API keys." },
             { status: 401 },
           )
+        }
+
+        if (error.type === "StripeCardError") {
+          return NextResponse.json({ error: `Card error: ${error.message}` }, { status: 400 })
+        }
+
+        if (error.type === "StripeRateLimitError") {
+          return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 })
         }
 
         return NextResponse.json({ error: `Payment service error: ${error.message}` }, { status: 400 })

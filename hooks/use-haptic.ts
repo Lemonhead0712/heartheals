@@ -1,131 +1,93 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useCallback, useEffect } from "react"
 
-export type HapticIntensity = "none" | "light" | "medium" | "strong"
-export type HapticPattern = "single" | "double" | "success" | "error" | "warning" | "custom"
+export type HapticIntensity = "light" | "medium" | "heavy"
+export type HapticPattern = "success" | "warning" | "error" | "notification"
 
-interface HapticSettings {
-  enabled: boolean
-  intensity: HapticIntensity
+// Default patterns (in milliseconds)
+const DEFAULT_PATTERNS = {
+  success: [10, 100, 10],
+  warning: [30, 100, 30, 100, 30],
+  error: [100, 100, 100, 100, 100],
+  notification: [10, 100, 10, 100, 10],
 }
 
-/**
- * Custom hook for providing haptic feedback on supported devices
- */
 export function useHaptic() {
-  const [settings, setSettings] = useState<HapticSettings>({
+  const [settings, setSettings] = useState({
     enabled: true,
-    intensity: "medium",
+    intensity: "medium" as HapticIntensity,
   })
 
-  // Load settings from localStorage on mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
+  // Check if haptic feedback is supported
+  const isHapticSupported = useCallback(() => {
+    return typeof navigator !== "undefined" && "vibrate" in navigator
+  }, [])
+
+  // Trigger haptic feedback with specified intensity
+  const haptic = useCallback(
+    (intensity?: HapticIntensity) => {
+      if (!settings.enabled || !isHapticSupported()) return
+
+      const actualIntensity = intensity || settings.intensity
+      let duration = 10 // light
+
+      if (actualIntensity === "medium") duration = 20
+      if (actualIntensity === "heavy") duration = 35
+
       try {
-        const savedSettings = localStorage.getItem("hapticSettings")
-        if (savedSettings) {
-          setSettings(JSON.parse(savedSettings))
-        }
+        navigator.vibrate(duration)
       } catch (error) {
-        console.error("Error loading haptic settings:", error)
+        console.error("Haptic feedback error:", error)
       }
+    },
+    [settings.enabled, settings.intensity],
+  )
+
+  // Trigger pattern-based haptic feedback
+  const patternHaptic = useCallback(
+    (pattern: HapticPattern | number[]) => {
+      if (!settings.enabled || !isHapticSupported()) return
+
+      try {
+        const vibrationPattern = Array.isArray(pattern) ? pattern : DEFAULT_PATTERNS[pattern]
+        navigator.vibrate(vibrationPattern)
+      } catch (error) {
+        console.error("Pattern haptic feedback error:", error)
+      }
+    },
+    [settings.enabled],
+  )
+
+  // Update haptic settings
+  const updateSettings = useCallback((newSettings: { enabled?: boolean; intensity?: HapticIntensity }) => {
+    setSettings((prev) => ({ ...prev, ...newSettings }))
+  }, [])
+
+  // Initialize haptic settings from localStorage if available
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    try {
+      const storedSettings = localStorage.getItem("hapticSettings")
+      if (storedSettings) {
+        setSettings(JSON.parse(storedSettings))
+      }
+    } catch (error) {
+      console.error("Error loading haptic settings:", error)
     }
   }, [])
 
   // Save settings to localStorage when they change
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem("hapticSettings", JSON.stringify(settings))
-      } catch (error) {
-        console.error("Error saving haptic settings:", error)
-      }
+    if (typeof window === "undefined") return
+
+    try {
+      localStorage.setItem("hapticSettings", JSON.stringify(settings))
+    } catch (error) {
+      console.error("Error saving haptic settings:", error)
     }
   }, [settings])
-
-  /**
-   * Get the vibration duration based on intensity setting
-   */
-  const getDuration = (intensity: HapticIntensity = settings.intensity): number => {
-    switch (intensity) {
-      case "none":
-        return 0
-      case "light":
-        return 10
-      case "medium":
-        return 20
-      case "strong":
-        return 35
-      default:
-        return 20
-    }
-  }
-
-  /**
-   * Trigger a vibration with the specified duration
-   */
-  const triggerHaptic = (duration: number) => {
-    if (!settings.enabled || duration === 0) return
-
-    // Check if the browser supports the Vibration API
-    if (typeof navigator !== "undefined" && navigator.vibrate) {
-      navigator.vibrate(duration)
-    }
-  }
-
-  /**
-   * Trigger haptic feedback with the specified intensity
-   */
-  const haptic = (intensity?: HapticIntensity) => {
-    const duration = getDuration(intensity)
-    triggerHaptic(duration)
-  }
-
-  /**
-   * Trigger a pattern of haptic feedback
-   */
-  const patternHaptic = (pattern: HapticPattern | number[]) => {
-    if (!settings.enabled) return
-
-    if (typeof navigator !== "undefined" && navigator.vibrate) {
-      if (Array.isArray(pattern)) {
-        navigator.vibrate(pattern)
-      } else {
-        switch (pattern) {
-          case "single":
-            navigator.vibrate(getDuration())
-            break
-          case "double":
-            navigator.vibrate([getDuration(), 50, getDuration()])
-            break
-          case "success":
-            navigator.vibrate([getDuration("light"), 30, getDuration("medium")])
-            break
-          case "error":
-            navigator.vibrate([getDuration("strong"), 20, getDuration("medium"), 20, getDuration("light")])
-            break
-          case "warning":
-            navigator.vibrate([getDuration("medium"), 40, getDuration("medium")])
-            break
-        }
-      }
-    }
-  }
-
-  /**
-   * Check if haptic feedback is supported on the current device
-   */
-  const isHapticSupported = () => {
-    return typeof navigator !== "undefined" && "vibrate" in navigator
-  }
-
-  /**
-   * Update haptic settings
-   */
-  const updateSettings = (newSettings: Partial<HapticSettings>) => {
-    setSettings((prev) => ({ ...prev, ...newSettings }))
-  }
 
   return {
     haptic,
