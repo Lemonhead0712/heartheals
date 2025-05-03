@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true, // Use SWC for minification instead of Terser
+  // Remove swcMinify as it's not recognized
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -11,12 +11,11 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Simplify webpack configuration
   webpack: (config, { isServer }) => {
-    // Disable the problematic minification plugin
+    // Disable minification completely to avoid the webpack error
     if (!isServer) {
-      config.optimization.minimize = true;
-      // Use SWC minifier instead of the default
-      config.optimization.minimizer = [];
+      config.optimization.minimize = false;
     }
     return config;
   },
