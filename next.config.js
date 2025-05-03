@@ -10,6 +10,10 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Simplified webpack config
+  webpack: (config) => {
+    return config
+  },
 }
 
 module.exports = nextConfig

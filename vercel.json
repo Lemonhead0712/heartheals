@@ -1,13 +1,8 @@
 {
-  "github": {
-    "silent": true,
-    "enabled": true
-  },
-  "git": {
-    "deploymentEnabled": {
-      "main": true
-    }
-  },
   "framework": "nextjs",
-  "buildCommand": "pnpm install && pnpm build"
+  "buildCommand": "npm install && npm run build",
+  "installCommand": "npm install",
+  "github": {
+    "silent": true
+  }
 }
