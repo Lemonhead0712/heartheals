@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  webhook-forwarder:
+    build: .
+    ports:
+      - "4242:4242"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - webhook-network
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - webhook-network
+
+  sidekiq:
+    build: .
+    command: bundle exec sidekiq -r ./webhook_forwarder.rb
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - webhook-network
+
+  # Optional: Add a StatsD + Graphite container for metrics
+  statsd:
+    image: graphiteapp/graphite-statsd
+    ports:
+      - "8125:8125/udp"  # StatsD
+      - "8080:80"        # Graphite Web UI
+    volumes:
+      - graphite-data:/opt/graphite/storage
+    restart: unless-stopped
+    networks:
+      - webhook-network
+
+volumes:
+  redis-data:
+  graphite-data:
+
+networks:
+  webhook-network:

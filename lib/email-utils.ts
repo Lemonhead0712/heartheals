@@ -262,3 +262,23 @@ export async function sendPaymentFailureEmail({
     return { success: false, error }
   }
 }
+
+// Add this function to safely log email configuration without exposing env vars to client
+export function getEmailServiceConfiguration() {
+  // This should only be called server-side
+  if (typeof window !== "undefined") {
+    console.error("getEmailServiceConfiguration should only be called server-side")
+    return {
+      configured: false,
+      environment: "unknown",
+      appUrl: "",
+    }
+  }
+
+  return {
+    apiKeyConfigured: !!process.env.RESEND_API_KEY,
+    apiKeyPrefix: process.env.RESEND_API_KEY ? `${process.env.RESEND_API_KEY.substring(0, 5)}...` : "not-configured",
+    environment: process.env.NODE_ENV,
+    appUrl: process.env.NEXT_PUBLIC_APP_URL,
+  }
+}

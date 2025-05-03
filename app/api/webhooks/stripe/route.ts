@@ -1,153 +1,105 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
+import Stripe from "stripe"
+import { forwardWebhookEventToAll } from "@/lib/webhook-forwarder"
+import { generateIdempotencyKey } from "@/lib/webhook-service"
 import { logError } from "@/utils/error-utils"
-import { processStripeWebhookEvent, generateIdempotencyKey, type WebhookEventMetadata } from "@/lib/webhook-service"
-import { hasProcessedEvent, recordProcessedEvent } from "@/lib/webhook-db"
-import { verifyStripeSignature, verifyTimestamp, checkRateLimit } from "@/lib/webhook-security"
-import { recordWebhookMetrics } from "@/lib/webhook-monitoring"
 
-// Webhook configuration
-const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET
-const RATE_LIMIT = 100 // Max requests per minute per IP
-const RATE_LIMIT_WINDOW_MS = 60 * 1000 // 1 minute
+// Initialize Stripe with the secret key from environment variables
+const getStripeInstance = () => {
+  const secretKey = process.env.STRIPE_SECRET_KEY
 
-export async function POST(request: NextRequest) {
-  const startTime = Date.now()
+  if (!secretKey) {
+    throw new Error("Stripe secret key is missing")
+  }
 
+  return new Stripe(secretKey, {
+    apiVersion: "2023-10-16",
+  })
+}
+
+// Process rate limiting for webhooks
+const processRateLimit = (signature: string): boolean => {
+  // In a production app, implement proper rate limiting
+  // For now, we'll always return true (no rate limiting)
+  return true
+}
+
+export async function POST(request: Request) {
   try {
-    // Get client IP for rate limiting
-    const ip = request.headers.get("x-forwarded-for") || "unknown"
+    // Get the raw request body as text
+    const rawBody = await request.text()
 
-    // Check rate limit
-    if (!checkRateLimit(ip, RATE_LIMIT, RATE_LIMIT_WINDOW_MS)) {
-      console.warn(`Rate limit exceeded for IP: ${ip}`)
-      return NextResponse.json({ error: "Too many requests, please try again later" }, { status: 429 })
-    }
-
-    // Get request body and signature
-    const body = await request.text()
+    // Get the Stripe signature from headers
     const signature = request.headers.get("stripe-signature")
 
-    // Validate signature header
     if (!signature) {
       console.error("Missing Stripe signature")
       return NextResponse.json({ error: "Missing Stripe signature" }, { status: 400 })
     }
 
-    // Validate webhook secret
-    if (!WEBHOOK_SECRET) {
+    // Check rate limiting
+    if (!processRateLimit(signature)) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 })
+    }
+
+    // Get Stripe webhook secret
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+
+    if (!webhookSecret) {
       console.error("Stripe webhook secret is missing")
       return NextResponse.json({ error: "Webhook configuration error" }, { status: 500 })
     }
 
-    // Verify the webhook signature
-    const { isValid, event, error } = verifyStripeSignature(body, signature, WEBHOOK_SECRET)
-
-    if (!isValid || !event) {
-      console.error(`Webhook signature verification failed: ${error?.message}`)
-      return NextResponse.json({ error: error?.message || "Invalid signature" }, { status: 400 })
+    // Get Stripe instance
+    let stripe
+    try {
+      stripe = getStripeInstance()
+    } catch (error) {
+      console.error("Error initializing Stripe:", error)
+      return NextResponse.json({ error: "Stripe configuration error" }, { status: 500 })
     }
 
-    // Verify timestamp is recent
-    if (!verifyTimestamp(event.created * 1000)) {
-      console.error(`Webhook event is too old: ${event.id}`)
-      return NextResponse.json({ error: "Event is too old" }, { status: 400 })
+    // Verify and construct the event
+    let event: Stripe.Event
+    try {
+      event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret)
+    } catch (error) {
+      console.error("Webhook signature verification failed:", error)
+      return NextResponse.json({ error: "Webhook signature verification failed" }, { status: 400 })
     }
 
-    // Check for duplicate events (idempotency)
-    const eventId = event.id
-    const hasProcessed = await hasProcessedEvent(eventId)
+    // Log the event
+    console.log(`Received Stripe webhook event: ${event.type} (${event.id})`)
 
-    if (hasProcessed) {
-      console.log(`Webhook event already processed: ${eventId}`)
-      return NextResponse.json({ received: true, idempotent: true }, { status: 200 })
-    }
-
-    // Generate idempotency key and metadata
+    // Generate idempotency key and prepare metadata
     const idempotencyKey = generateIdempotencyKey(event)
-    const metadata: WebhookEventMetadata = {
+    const metadata = {
       eventId: event.id,
       eventType: event.type,
       timestamp: event.created,
-      apiVersion: event.api_version || "",
+      apiVersion: event.api_version || "unknown",
       idempotencyKey,
     }
 
-    // Process the webhook event
-    const result = await processStripeWebhookEvent(event, metadata)
-    const processingTime = Date.now() - startTime
+    // Forward the event to all destinations
+    const forwardingResults = await forwardWebhookEventToAll(event, metadata)
 
-    // Record the processed event for idempotency
-    await recordProcessedEvent(eventId, event.type, event.created, result, processingTime, result.error)
-
-    // Record metrics
-    recordWebhookMetrics({
+    // Return success response
+    return NextResponse.json({
+      received: true,
+      eventId: event.id,
       eventType: event.type,
-      success: result.success,
-      processingTime,
-      error: result.error,
+      forwardingResults: forwardingResults.map((result) => ({
+        destination: result.destination.name,
+        success: result.success,
+        message: result.message,
+      })),
     })
-
-    // Log processing time
-    console.log(`Processed webhook event ${eventId} in ${processingTime}ms`)
-
-    // Return appropriate response
-    if (result.success) {
-      return NextResponse.json({ received: true, processed: true })
-    } else {
-      // We still return 200 to acknowledge receipt, but include error details
-      return NextResponse.json(
-        {
-          received: true,
-          processed: false,
-          error: result.message,
-        },
-        { status: 200 },
-      )
-    }
   } catch (error) {
-    // Calculate processing time even for errors
-    const processingTime = Date.now() - startTime
-
-    // Log the error
-    logError("Unhandled error in webhook handler", error)
-
-    // Record error metrics
-    recordWebhookMetrics({
-      eventType: "error",
-      success: false,
-      processingTime,
-      error,
-    })
-
-    // Return error response
+    logError("Webhook processing error", error)
     return NextResponse.json(
-      {
-        error: "Failed to process webhook",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
+      { error: "Webhook processing error", details: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 },
     )
   }
-}
-
-// Add a health check endpoint
-export async function GET(request: NextRequest) {
-  // Only allow health checks from authorized sources
-  const authHeader = request.headers.get("authorization")
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
-  const token = authHeader.substring(7)
-  const validToken = process.env.WEBHOOK_HEALTH_CHECK_TOKEN
-
-  if (!validToken || token !== validToken) {
-    return NextResponse.json({ error: "Invalid token" }, { status: 403 })
-  }
-
-  // Return health status
-  const { getWebhookHealthStatus } = await import("@/lib/webhook-monitoring")
-  const healthStatus = getWebhookHealthStatus()
-
-  return NextResponse.json(healthStatus)
 }

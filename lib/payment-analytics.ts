@@ -71,3 +71,14 @@ export async function trackPaymentEvent(event: PaymentEvent, data: Partial<Payme
     console.error("Error tracking payment event:", error)
   }
 }
+
+// Add the missing recordPaymentAnalytics export
+// This should be added after the existing trackPaymentEvent function
+
+// Add this new export function that wraps the existing trackPaymentEvent function
+export async function recordPaymentAnalytics(
+  event: PaymentEvent,
+  data: Partial<PaymentAnalyticsData> = {},
+): Promise<void> {
+  return trackPaymentEvent(event, data)
+}

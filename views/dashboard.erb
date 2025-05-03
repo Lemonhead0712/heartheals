@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Webhook Forwarder Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1, h2, h3 {
+      color: #2d3748;
+    }
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin: 20px 0;
+    }
+    .stat-card {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      flex: 1;
+      min-width: 200px;
+    }
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #4a5568;
+    }
+    .stat-label {
+      font-size: 0.9rem;
+      color: #718096;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+    th, td {
+      text-align: left;
+      padding: 12px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    th {
+      background-color: #f7fafc;
+      font-weight: 600;
+    }
+    tr:hover {
+      background-color: #f7fafc;
+    }
+    .action-btn {
+      display: inline-block;
+      background: #4299e1;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .action-btn:hover {
+      background: #3182ce;
+    }
+    .action-btn.danger {
+      background: #f56565;
+    }
+    .action-btn.danger:hover {
+      background: #e53e3e;
+    }
+    .refresh {
+      margin-top: 20px;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <h1>Webhook Forwarder Dashboard</h1>
+  
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-value"><%= @destinations_count %></div>
+      <div class="stat-label">Destinations</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value"><%= @event_count %></div>
+      <div class="stat-label">Recent Events</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value"><%= @error_count %></div>
+      <div class="stat-label">Errors</div>
+    </div>
+  </div>
+  
+  <h2>Webhook Destinations</h2>
+  <p>
+    <a href="#" class="action-btn" id="add-destination">Add Destination</a>
+  </p>
+  
+  <table id="destinations-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>URL</th>
+        <th>Event Types</th>
+        <th>Description</th>
+        <th>Created</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td colspan="6">Loading destinations...</td>
+      </tr>
+    </tbody>
+  </table>
+  
+  <div class="refresh">
+    <a href="#" class="action-btn" id="refresh-data">Refresh Data</a>
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      loadDestinations();
+      
+      document.getElementById('refresh-data').addEventListener('click', function(e) {
+        e.preventDefault();
+        loadDestinations();
+      });
+      
+      document.getElementById('add-destination').addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        const url = prompt('Enter destination URL:');
+        if (!url) return;
+        
+        const description = prompt('Enter description (optional):');
+        const eventTypes = prompt('Enter event types (comma-separated, or * for all):', '*');
+        
+        const types = eventTypes ? eventTypes.split(',').map(t => t.trim()) : ['*'];
+        
+        fetch('/api/destinations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getToken()}`
+          },
+          body: JSON.stringify({
+            url: url,
+            description: description || '',
+            event_types: types
+          })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            alert(`Error: ${data.error}`);
+          } else {
+            loadDestinations();
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('Error adding destination');
+        });
+      });
+    });
+    
+    function loadDestinations() {
+      fetch('/api/destinations', {
+        headers: {
+          'Authorization': `Bearer ${getToken()}`
+        }
+      })
+      .then(response => response.json())
+      .then(destinations => {
+        const tbody = document.querySelector('#destinations-table tbody');
+        
+        if (destinations.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6">No destinations configured</td></tr>';
+          return;
+        }
+        
+        tbody.innerHTML = '';
+        destinations.forEach(dest => {
+          const row = document.createElement('tr');
+          
+          const idCell = document.createElement('td');
+          idCell.textContent = dest.id.substring(0, 8) + '...';
+          row.appendChild(idCell);
+          
+          const urlCell = document.createElement('td');
+          urlCell.textContent = dest.url;
+          row.appendChild(urlCell);
+          
+          const typesCell = document.createElement('td');
+          typesCell.textContent = dest.event_types.join(', ');
+          row.appendChild(typesCell);
+          
+          const descCell = document.createElement('td');
+          descCell.textContent = dest.description || '-';
+          row.appendChild(descCell);
+          
+          const dateCell = document.createElement('td');
+          dateCell.textContent = new Date(dest.created_at * 1000).toLocaleString();
+          row.appendChild(dateCell);
+          
+          const actionsCell = document.createElement('td');
+          const deleteBtn = document.createElement('button');
+          deleteBtn.textContent = 'Delete';
+          deleteBtn.className = 'action-btn danger';
+          deleteBtn.addEventListener('click', () => deleteDestination(dest.id));
+          actionsCell.appendChild(deleteBtn);
+          
+          row.appendChild(actionsCell);
+          tbody.appendChild(row);
+        });
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        document.querySelector('#destinations-table tbody').innerHTML = 
+          '<tr><td colspan="6">Error loading destinations</td></tr>';
+      });
+    }
+    
+    function deleteDestination(id) {
+      if (!confirm(`Are you sure you want to delete this destination?`)) {
+        return;
+      }
+      
+      fetch(`/api/destinations/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${getToken()}`
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.error) {
+          alert(`Error: ${data.error}`);
+        } else {
+          loadDestinations();
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Error deleting destination');
+      });
+    }
+    
+    function getToken() {
+      // In a real app, you would handle authentication properly
+      // This is just a simple example
+      return localStorage.getItem('auth_token') || '';
+    }
+  </script>
+</body>
+</html>

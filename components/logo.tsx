@@ -58,7 +58,7 @@ export function Logo({ className = "", size = "medium", animate = false, showTex
             size === "small" ? "text-sm" : size === "medium" ? "text-xl" : "text-2xl"
           }`}
         >
-          {textOverride || "HeartHeals"}
+          {textOverride || "HeartsHeal"}
         </h2>
       )}
     </div>

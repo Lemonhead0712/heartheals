@@ -49,11 +49,18 @@ export const metadata: Metadata = {
     generator: 'v0.dev'
 }
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // This runs on the server, so we can safely set a client-accessible environment variable
+  // Add this near the top of your RootLayout component
+  if (typeof window === "undefined") {
+    // Only do this server-side to avoid hydration issues
+    const appEnv = process.env.NODE_ENV || "development"
+    // Use NEXT_PUBLIC so it's accessible on the client
+    process.env.NEXT_PUBLIC_APP_ENV = appEnv
+  }
+
+  // Rest of your layout code...
+
   return (
     <html lang="en" className={`h-full ${playfair.variable} ${inter.variable}`}>
       <body className={`${inter.className} flex min-h-full flex-col bg-background antialiased`}>

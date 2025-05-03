@@ -67,10 +67,10 @@
     "canvas-confetti": "latest",
     "@supabase/auth-helpers-nextjs": "latest",
     "@react-email/tailwind": "latest",
-    "resend": "latest",
-    "@react-email/render": "latest",
     "@stripe/react-stripe-js": "latest",
-    "crypto": "latest"
+    "crypto": "latest",
+    "resend": "latest",
+    "@react-email/render": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

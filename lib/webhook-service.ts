@@ -48,6 +48,12 @@ export async function processStripeWebhookEvent(
 
     // Process different event types
     switch (event.type) {
+      case "payment_intent.succeeded":
+        return await handlePaymentIntentSucceeded(event.data.object as Stripe.PaymentIntent)
+
+      case "payment_intent.payment_failed":
+        return await handlePaymentIntentFailed(event.data.object as Stripe.PaymentIntent)
+
       case "customer.subscription.created":
         return await handleSubscriptionCreated(event.data.object as Stripe.Subscription)
 
@@ -63,25 +69,8 @@ export async function processStripeWebhookEvent(
       case "invoice.payment_failed":
         return await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice)
 
-      case "payment_intent.succeeded":
-        return await handlePaymentIntentSucceeded(event.data.object as Stripe.PaymentIntent)
-
-      case "payment_intent.payment_failed":
-        return await handlePaymentIntentFailed(event.data.object as Stripe.PaymentIntent)
-
-      case "charge.succeeded":
-        return await handleChargeSucceeded(event.data.object as Stripe.Charge)
-
-      case "charge.failed":
-        return await handleChargeFailed(event.data.object as Stripe.Charge)
-
-      case "checkout.session.completed":
-        return await handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session)
-
-      case "customer.created":
-      case "customer.updated":
-      case "customer.deleted":
-        return await handleCustomerEvent(event.type, event.data.object as Stripe.Customer)
+      case "payment_method.attached":
+        return await handlePaymentMethodAttached(event.data.object as Stripe.PaymentMethod)
 
       default:
         // Log unhandled event types but return success to acknowledge receipt
@@ -101,8 +90,91 @@ export async function processStripeWebhookEvent(
   }
 }
 
+// Handler for payment intent succeeded events
+async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent): Promise<WebhookProcessingResult> {
+  try {
+    console.log(`Payment intent succeeded: ${paymentIntent.id} for amount ${paymentIntent.amount}`)
+
+    // In a real app, you would update your database with the payment details
+    // await db.payments.update({...})
+
+    return {
+      success: true,
+      message: `Payment intent succeeded: ${paymentIntent.id}`,
+      data: {
+        paymentIntentId: paymentIntent.id,
+        amount: paymentIntent.amount,
+        status: paymentIntent.status,
+      },
+    }
+  } catch (error) {
+    logError(`Error processing payment intent success: ${paymentIntent.id}`, error)
+    return {
+      success: false,
+      message: `Error processing payment intent success: ${paymentIntent.id}`,
+      error,
+    }
+  }
+}
+
+// Handler for payment intent failed events
+async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent): Promise<WebhookProcessingResult> {
+  try {
+    console.log(`Payment intent failed: ${paymentIntent.id}`)
+
+    // In a real app, you would update your database with the failed payment details
+    // await db.payments.update({...})
+
+    return {
+      success: true,
+      message: `Payment intent failed: ${paymentIntent.id}`,
+      data: {
+        paymentIntentId: paymentIntent.id,
+        amount: paymentIntent.amount,
+        status: paymentIntent.status,
+        error: paymentIntent.last_payment_error,
+      },
+    }
+  } catch (error) {
+    logError(`Error processing payment intent failure: ${paymentIntent.id}`, error)
+    return {
+      success: false,
+      message: `Error processing payment intent failure: ${paymentIntent.id}`,
+      error,
+    }
+  }
+}
+
+// Handler for payment method attached events
+async function handlePaymentMethodAttached(paymentMethod: Stripe.PaymentMethod): Promise<WebhookProcessingResult> {
+  try {
+    console.log(`Payment method attached: ${paymentMethod.id}`)
+
+    // In a real app, you would update your database with the payment method
+    // await db.paymentMethods.create({...})
+
+    return {
+      success: true,
+      message: `Payment method attached: ${paymentMethod.id}`,
+      data: {
+        paymentMethodId: paymentMethod.id,
+        type: paymentMethod.type,
+        customerId: paymentMethod.customer,
+      },
+    }
+  } catch (error) {
+    logError(`Error processing payment method attachment: ${paymentMethod.id}`, error)
+    return {
+      success: false,
+      message: `Error processing payment method attachment: ${paymentMethod.id}`,
+      error,
+    }
+  }
+}
+
 // Handler for subscription created events
 async function handleSubscriptionCreated(subscription: Stripe.Subscription): Promise<WebhookProcessingResult> {
+  // Implementation remains the same as before
   try {
     console.log(`Subscription created: ${subscription.id}`)
 
@@ -168,6 +240,7 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription): Pro
 
 // Handler for subscription updated events
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<WebhookProcessingResult> {
+  // Implementation remains the same as before
   try {
     console.log(`Subscription updated: ${subscription.id}, status: ${subscription.status}`)
 
@@ -194,6 +267,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
 
 // Handler for subscription deleted events
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<WebhookProcessingResult> {
+  // Implementation remains the same as before
   try {
     console.log(`Subscription deleted: ${subscription.id}`)
 
@@ -220,6 +294,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Pro
 
 // Handler for invoice payment succeeded events
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<WebhookProcessingResult> {
+  // Implementation remains the same as before
   try {
     console.log(`Invoice payment succeeded: ${invoice.id}`)
 
@@ -303,6 +378,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<W
 
 // Handler for invoice payment failed events
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<WebhookProcessingResult> {
+  // Implementation remains the same as before
   try {
     console.log(`Invoice payment failed: ${invoice.id}`)
 
@@ -386,61 +462,6 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<Webh
     return {
       success: false,
       message: `Error processing invoice payment failure: ${invoice.id}`,
-      error,
-    }
-  }
-}
-
-// Handler for payment intent succeeded events
-async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent): Promise<WebhookProcessingResult> {
-  try {
-    console.log(`Payment intent succeeded: ${paymentIntent.id}`)
-
-    // In a real app, you would update your database with the payment details
-    // await db.payments.update({...})
-
-    return {
-      success: true,
-      message: `Payment intent succeeded: ${paymentIntent.id}`,
-      data: {
-        paymentIntentId: paymentIntent.id,
-        amount: paymentIntent.amount,
-        status: paymentIntent.status,
-      },
-    }
-  } catch (error) {
-    logError(`Error processing payment intent success: ${paymentIntent.id}`, error)
-    return {
-      success: false,
-      message: `Error processing payment intent success: ${paymentIntent.id}`,
-      error,
-    }
-  }
-}
-
-// Handler for payment intent failed events
-async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent): Promise<WebhookProcessingResult> {
-  try {
-    console.log(`Payment intent failed: ${paymentIntent.id}`)
-
-    // In a real app, you would update your database with the failed payment details
-    // await db.payments.update({...})
-
-    return {
-      success: true,
-      message: `Payment intent failed: ${paymentIntent.id}`,
-      data: {
-        paymentIntentId: paymentIntent.id,
-        amount: paymentIntent.amount,
-        status: paymentIntent.status,
-        error: paymentIntent.last_payment_error,
-      },
-    }
-  } catch (error) {
-    logError(`Error processing payment intent failure: ${paymentIntent.id}`, error)
-    return {
-      success: false,
-      message: `Error processing payment intent failure: ${paymentIntent.id}`,
       error,
     }
   }
