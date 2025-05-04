@@ -2,21 +2,32 @@
 
 import { useState, useCallback, useEffect } from "react"
 
-export type HapticIntensity = "light" | "medium" | "heavy"
-export type HapticPattern = "success" | "warning" | "error" | "notification"
+export type HapticIntensity = "light" | "medium" | "strong" | "heavy"
+export type HapticPattern = "success" | "warning" | "error" | "notification" | "single" | "double"
 
 // Default patterns (in milliseconds)
-const DEFAULT_PATTERNS = {
+const DEFAULT_PATTERNS: Record<HapticPattern, number[]> = {
   success: [10, 100, 10],
   warning: [30, 100, 30, 100, 30],
   error: [100, 100, 100, 100, 100],
   notification: [10, 100, 10, 100, 10],
+  single: [40],
+  double: [40, 100, 40],
 }
 
+export interface HapticSettings {
+  enabled: boolean
+  intensity: HapticIntensity
+}
+
+/**
+ * Hook for managing haptic feedback
+ * @returns Haptic utilities and settings
+ */
 export function useHaptic() {
-  const [settings, setSettings] = useState({
+  const [settings, setSettings] = useState<HapticSettings>({
     enabled: true,
-    intensity: "medium" as HapticIntensity,
+    intensity: "medium",
   })
 
   // Check if haptic feedback is supported
@@ -33,7 +44,7 @@ export function useHaptic() {
       let duration = 10 // light
 
       if (actualIntensity === "medium") duration = 20
-      if (actualIntensity === "heavy") duration = 35
+      if (actualIntensity === "strong" || actualIntensity === "heavy") duration = 35
 
       try {
         navigator.vibrate(duration)
@@ -41,7 +52,7 @@ export function useHaptic() {
         console.error("Haptic feedback error:", error)
       }
     },
-    [settings.enabled, settings.intensity],
+    [settings.enabled, settings.intensity, isHapticSupported],
   )
 
   // Trigger pattern-based haptic feedback
@@ -56,11 +67,11 @@ export function useHaptic() {
         console.error("Pattern haptic feedback error:", error)
       }
     },
-    [settings.enabled],
+    [settings.enabled, isHapticSupported],
   )
 
   // Update haptic settings
-  const updateSettings = useCallback((newSettings: { enabled?: boolean; intensity?: HapticIntensity }) => {
+  const updateSettings = useCallback((newSettings: Partial<HapticSettings>) => {
     setSettings((prev) => ({ ...prev, ...newSettings }))
   }, [])
 
@@ -89,11 +100,30 @@ export function useHaptic() {
     }
   }, [settings])
 
+  // Legacy support for old API
+  const hapticEnabled = settings.enabled
+  const toggleHaptic = useCallback(() => {
+    updateSettings({ enabled: !settings.enabled })
+  }, [settings.enabled, updateSettings])
+
+  const triggerHaptic = useCallback(
+    (intensity: HapticIntensity = "medium") => {
+      haptic(intensity)
+    },
+    [haptic],
+  )
+
   return {
+    // New API
     haptic,
     patternHaptic,
     isHapticSupported,
     settings,
     updateSettings,
+
+    // Legacy API support
+    hapticEnabled,
+    toggleHaptic,
+    triggerHaptic,
   }
 }

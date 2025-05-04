@@ -1,82 +1,61 @@
 "use client"
 
-import React, { createContext, useContext, useState } from "react"
+import type React from "react"
+import { createContext, useContext } from "react"
+import { useHaptic as useHapticHook, type HapticIntensity, type HapticPattern } from "@/hooks/use-haptic"
 
-type HapticContextType = {
-  hapticEnabled: boolean
-  toggleHaptic: () => void
-  triggerHaptic: (intensity?: "light" | "medium" | "heavy") => void
-}
+/**
+ * Type definition for the haptic context
+ * Includes both the new API and legacy support
+ */
+type HapticContextType = ReturnType<typeof useHapticHook>
 
+// Create a default context with empty implementations
 const defaultHapticContext: HapticContextType = {
-  hapticEnabled: true,
+  // New API
+  haptic: () => {},
+  patternHaptic: () => {},
+  isHapticSupported: () => false,
+  settings: { enabled: false, intensity: "medium" },
+  updateSettings: () => {},
+
+  // Legacy API
+  hapticEnabled: false,
   toggleHaptic: () => {},
   triggerHaptic: () => {},
 }
 
+// Create the context
 const HapticContext = createContext<HapticContextType>(defaultHapticContext)
 
+/**
+ * Provider component for haptic feedback
+ * Uses the unified haptic hook internally
+ */
 export const HapticProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [hapticEnabled, setHapticEnabled] = useState(true)
+  // Use the unified hook
+  const hapticUtils = useHapticHook()
 
-  // Load haptic preference from localStorage on mount
-  React.useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedPreference = localStorage.getItem("heartsHeal_hapticEnabled")
-      if (savedPreference !== null) {
-        setHapticEnabled(savedPreference === "true")
-      }
-    }
-  }, [])
-
-  const toggleHaptic = () => {
-    const newValue = !hapticEnabled
-    setHapticEnabled(newValue)
-    if (typeof window !== "undefined") {
-      localStorage.setItem("heartsHeal_hapticEnabled", String(newValue))
-    }
-  }
-
-  const triggerHaptic = (intensity: "light" | "medium" | "heavy" = "medium") => {
-    if (!hapticEnabled || typeof navigator === "undefined" || !navigator.vibrate) {
-      return
-    }
-
-    // Different vibration patterns based on intensity
-    switch (intensity) {
-      case "light":
-        navigator.vibrate(10)
-        break
-      case "medium":
-        navigator.vibrate(35)
-        break
-      case "heavy":
-        navigator.vibrate([50, 30, 50])
-        break
-      default:
-        navigator.vibrate(35)
-    }
-  }
-
-  return (
-    <HapticContext.Provider
-      value={{
-        hapticEnabled,
-        toggleHaptic,
-        triggerHaptic,
-      }}
-    >
-      {children}
-    </HapticContext.Provider>
-  )
+  return <HapticContext.Provider value={hapticUtils}>{children}</HapticContext.Provider>
 }
 
-export const useHaptic = () => {
+/**
+ * Primary hook for accessing haptic functionality
+ * This is the recommended way to access haptic features
+ */
+export const useHapticContext = () => {
   const context = useContext(HapticContext)
   if (!context) {
-    throw new Error("useHaptic must be used within a HapticProvider")
+    throw new Error("useHapticContext must be used within a HapticProvider")
   }
   return context
 }
 
-export const useHapticContext = useHaptic
+/**
+ * Alternative name for the same hook (for backward compatibility)
+ * @deprecated Use useHapticContext instead
+ */
+export const useHaptic = useHapticContext
+
+// Re-export types from the hook for convenience
+export type { HapticIntensity, HapticPattern }

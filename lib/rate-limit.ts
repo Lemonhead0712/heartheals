@@ -57,6 +57,56 @@ export function checkRateLimit(options: RateLimitOptions): RateLimitResult {
   }
 }
 
+// Add the missing rateLimit function as a middleware-style function
+export const rateLimit = (options: {
+  maxRequests: number
+  windowMs: number
+  identifierFunction?: (req: Request) => string
+}) => {
+  return async (req: Request): Promise<Response | null> => {
+    const { maxRequests, windowMs, identifierFunction } = options
+
+    // Default identifier is the IP address from the x-forwarded-for header
+    // or a fallback string if not available
+    const defaultIdentifier = (req: Request): string => {
+      const forwardedFor = req.headers.get("x-forwarded-for")
+      return forwardedFor?.split(",")[0] || "unknown-ip"
+    }
+
+    const identifier = identifierFunction ? identifierFunction(req) : defaultIdentifier(req)
+
+    const result = checkRateLimit({
+      maxRequests,
+      windowMs,
+      identifier,
+    })
+
+    if (!result.success) {
+      // If rate limit is exceeded, return a 429 Too Many Requests response
+      const resetDate = new Date(result.resetTime).toUTCString()
+      return new Response(
+        JSON.stringify({
+          error: "Too many requests, please try again later.",
+          resetTime: resetDate,
+        }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "Retry-After": Math.ceil((result.resetTime - Date.now()) / 1000).toString(),
+            "X-RateLimit-Limit": maxRequests.toString(),
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": resetDate,
+          },
+        },
+      )
+    }
+
+    // If rate limit is not exceeded, return null to continue processing the request
+    return null
+  }
+}
+
 // Clean up expired records periodically
 setInterval(() => {
   const now = Date.now()
