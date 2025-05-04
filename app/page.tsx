@@ -1,6 +1,5 @@
 "use client"
 import { useState, useEffect } from "react"
-import Link from "next/link"
 import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { BookHeart, Clipboard, Wind } from "lucide-react"
@@ -13,6 +12,7 @@ import { InspirationalQuote } from "@/components/inspirational-quote"
 import { FreeModelBanner } from "@/components/free-model-banner"
 import type { EmotionEntry } from "@/utils/emotion-analytics"
 import { PageContainer } from "@/components/page-container"
+import { LinkWrapper } from "@/components/ui/link-wrapper"
 
 // Mock data types
 type JournalEntry = {
@@ -194,7 +194,7 @@ export default function Home() {
               animate="show"
             >
               <motion.div variants={item} className="flex">
-                <Link href="/emotional-log" className="block w-full">
+                <LinkWrapper href="/emotional-log" className="block w-full">
                   <Card className="h-full border-pink-200 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 flex flex-col">
                     <CardContent className="p-4 sm:p-5 flex flex-col items-center text-center flex-grow">
                       <Clipboard className="w-10 h-10 text-pink-500 mb-3" />
@@ -204,11 +204,11 @@ export default function Home() {
                       </p>
                     </CardContent>
                   </Card>
-                </Link>
+                </LinkWrapper>
               </motion.div>
 
               <motion.div variants={item} className="flex">
-                <Link href="/breathe" className="block w-full">
+                <LinkWrapper href="/breathe" className="block w-full">
                   <Card className="h-full border-blue-200 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 flex flex-col">
                     <CardContent className="p-4 sm:p-5 flex flex-col items-center text-center flex-grow">
                       <Wind className="w-10 h-10 text-blue-500 mb-3" />
@@ -218,11 +218,11 @@ export default function Home() {
                       </p>
                     </CardContent>
                   </Card>
-                </Link>
+                </LinkWrapper>
               </motion.div>
 
               <motion.div variants={item} className="flex sm:col-span-2 lg:col-span-1">
-                <Link href="/thoughts" className="block w-full">
+                <LinkWrapper href="/thoughts" className="block w-full">
                   <Card className="h-full border-purple-200 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 flex flex-col">
                     <CardContent className="p-4 sm:p-5 flex flex-col items-center text-center flex-grow">
                       <BookHeart className="w-10 h-10 text-purple-500 mb-3" />
@@ -232,7 +232,7 @@ export default function Home() {
                       </p>
                     </CardContent>
                   </Card>
-                </Link>
+                </LinkWrapper>
               </motion.div>
             </motion.div>
           </motion.div>

@@ -115,7 +115,7 @@ export function BottomNav() {
       <header className="fixed top-0 left-0 z-50 w-full bg-white/90 backdrop-blur-md shadow-sm">
         <div className="flex items-center justify-between px-4 py-2">
           <Link href="/" onClick={(e) => handleNavClick("/", e)} className="flex items-center">
-            <Logo size="small" showText={true} className="py-1" />
+            <Logo size="small" showText={true} linkWrapped={true} />
           </Link>
 
           <div className="flex items-center space-x-2">
