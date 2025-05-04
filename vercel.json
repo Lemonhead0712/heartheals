@@ -1,8 +1,13 @@
 {
-  "framework": "nextjs",
-  "buildCommand": "npm install && npm run build",
-  "installCommand": "npm install",
   "github": {
-    "silent": true
-  }
+    "silent": true,
+    "enabled": true
+  },
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    }
+  },
+  "framework": "nextjs",
+  "buildCommand": "npm run build"
 }

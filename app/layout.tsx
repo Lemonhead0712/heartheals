@@ -2,7 +2,9 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Playfair_Display, Inter } from "next/font/google"
 import "./globals.css"
+// Fix the import path - remove /src if it's not in the path
 import { ThemeProviderFixed as ThemeProvider } from "@/components/theme-provider-fixed"
+// Fix the subscription context import path
 import { SubscriptionProvider } from "@/contexts/subscription-context"
 import { Toaster } from "@/components/ui/toaster"
 import { HapticProvider } from "@/contexts/haptic-context"
@@ -58,8 +60,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     // Use NEXT_PUBLIC so it's accessible on the client
     process.env.NEXT_PUBLIC_APP_ENV = appEnv
   }
-
-  // Rest of your layout code...
 
   return (
     <html lang="en" className={`h-full ${playfair.variable} ${inter.variable}`}>

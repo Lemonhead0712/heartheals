@@ -1,64 +1,87 @@
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
-import { checkRateLimit } from "@/lib/rate-limit"
+import { getStripeInstance } from "@/lib/stripe"
+import { rateLimit } from "@/lib/rate-limit"
+import { logPaymentEvent, logPaymentError } from "@/lib/payment-logger"
+import { getAuthenticatedUser } from "@/lib/auth-utils"
+import { checkForFraud } from "@/lib/fraud-detection"
 
-// Initialize Stripe with the secret key from environment variables
-const getStripeInstance = () => {
-  const secretKey = process.env.STRIPE_SECRET_KEY
-
-  if (!secretKey) {
-    throw new Error("Stripe secret key is missing")
-  }
-
-  return new Stripe(secretKey, {
-    apiVersion: "2023-10-16",
-  })
-}
+// Rate limiter: 5 attempts per minute
+const limiter = rateLimit({
+  interval: 60 * 1000, // 60 seconds
+  uniqueTokenPerInterval: 500, // Max 500 users per interval
+})
 
 export async function POST(request: Request) {
   try {
-    // Get client IP address
-    const ip = request.headers.get("x-forwarded-for") || "unknown"
+    // Get client IP for rate limiting and fraud detection
+    const forwardedFor = request.headers.get("x-forwarded-for")
+    const clientIp = forwardedFor ? forwardedFor.split(",")[0] : "unknown"
 
-    // Check rate limit (5 attempts per minute)
-    const rateLimitResult = checkRateLimit({
-      maxRequests: 5,
-      windowMs: 60 * 1000, // 1 minute
-      identifier: ip,
+    // Get user agent for fraud detection
+    const userAgent = request.headers.get("user-agent") || "unknown"
+
+    // Apply rate limiting
+    try {
+      await limiter.check(5, clientIp) // 5 requests per minute per IP
+    } catch (error) {
+      logPaymentEvent(
+        "rate_limit_exceeded",
+        {
+          ip: clientIp,
+          userAgent,
+          timestamp: new Date().toISOString(),
+        },
+        "warning",
+      )
+
+      return NextResponse.json({ error: "Too many payment attempts. Please try again later." }, { status: 429 })
+    }
+
+    // Parse request body
+    const { amount, email, name, testMode = false } = await request.json()
+
+    // Validate required fields
+    if (!amount || !email || !name) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    }
+
+    // Check for authenticated user
+    const user = await getAuthenticatedUser(request)
+
+    // Check for fraud
+    const fraudCheck = await checkForFraud({
+      ip: clientIp,
+      email,
+      amount,
+      userAgent,
+      customerId: user?.customerId,
     })
 
-    if (!rateLimitResult.success) {
-      const resetInSeconds = Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)
-      return NextResponse.json(
-        { error: `Too many payment attempts. Please try again in ${resetInSeconds} seconds.` },
+    // If suspicious, reject or flag the payment
+    if (fraudCheck.isSuspicious) {
+      logPaymentEvent(
+        "fraud_detected",
         {
-          status: 429,
-          headers: {
-            "Retry-After": String(resetInSeconds),
-          },
+          ip: clientIp,
+          email,
+          amount,
+          riskScore: fraudCheck.riskScore,
+          reasons: fraudCheck.reasons,
+          timestamp: new Date().toISOString(),
         },
+        "warning",
       )
-    }
 
-    const { amount, email, name, testMode } = await request.json()
+      // If risk score is very high, reject the payment
+      if (fraudCheck.riskScore >= 75) {
+        return NextResponse.json(
+          { error: "This payment attempt has been flagged for security reasons. Please contact support." },
+          { status: 403 },
+        )
+      }
 
-    // Log payment attempt for debugging
-    console.log(`Payment attempt: ${amount} cents for ${email} (${name})${testMode ? " - TEST MODE" : ""}`)
-
-    // Validate the required fields
-    if (!amount || amount < 50) {
-      console.error(`Invalid amount: ${amount}`)
-      return NextResponse.json({ error: "Invalid amount" }, { status: 400 })
-    }
-
-    if (!email || !email.includes("@")) {
-      console.error(`Invalid email: ${email}`)
-      return NextResponse.json({ error: "Valid email is required" }, { status: 400 })
-    }
-
-    if (!name) {
-      console.error("Name is missing")
-      return NextResponse.json({ error: "Name is required" }, { status: 400 })
+      // If moderate risk, we'll continue but flag the payment intent
     }
 
     // Get Stripe instance
@@ -66,92 +89,60 @@ export async function POST(request: Request) {
     try {
       stripe = getStripeInstance()
     } catch (error) {
-      console.error("Error initializing Stripe:", error)
+      logPaymentError("stripe_initialization", error)
       return NextResponse.json({ error: "Payment service configuration error" }, { status: 500 })
     }
 
-    // Create a PaymentIntent
+    // Create the payment intent
     try {
-      // Check if we're in test mode
-      const secretKey = process.env.STRIPE_SECRET_KEY || ""
-      const isTestMode = secretKey.includes("test")
-
-      if (isTestMode) {
-        console.log("Creating payment intent in TEST MODE")
-      }
-
       const paymentIntent = await stripe.paymentIntents.create({
         amount,
         currency: "usd",
-        automatic_payment_methods: {
-          enabled: true,
-        },
+        payment_method_types: ["card"],
         metadata: {
           email,
           name,
-          product: "HeartHeals Premium Subscription",
-          test_mode: isTestMode ? "true" : "false",
+          testMode: testMode ? "true" : "false",
+          fraudScore: fraudCheck.riskScore.toString(),
+          fraudReasons: fraudCheck.reasons.join(", ").substring(0, 500), // Stripe metadata has size limits
+          createdAt: new Date().toISOString(),
+          ip: clientIp.substring(0, 100), // Don't store full IP in metadata
         },
         receipt_email: email,
-        description: "HeartHeals Premium Subscription",
       })
 
-      console.log(`Payment intent created successfully: ${paymentIntent.id}`)
+      // Log successful payment intent creation
+      logPaymentEvent("payment_intent_created", {
+        paymentIntentId: paymentIntent.id,
+        amount,
+        email,
+        testMode,
+        timestamp: new Date().toISOString(),
+      })
 
       return NextResponse.json({
         clientSecret: paymentIntent.client_secret,
-        paymentIntentId: paymentIntent.id,
-        isTestMode,
+        isTestMode: testMode,
       })
     } catch (error) {
       // Handle Stripe API errors
       if (error instanceof Stripe.errors.StripeError) {
-        console.error("Stripe API error:", error.message, error.type, error.code)
+        logPaymentError("stripe_api_error", error, {
+          code: error.code,
+          type: error.type,
+          amount,
+          email,
+        })
 
-        // Check for specific error types
-        if (error.type === "StripeAuthenticationError") {
-          return NextResponse.json(
-            { error: "Payment service authentication failed. Please check API keys." },
-            { status: 401 },
-          )
-        }
-
-        if (error.type === "StripeCardError") {
-          return NextResponse.json({ error: `Card error: ${error.message}` }, { status: 400 })
-        }
-
-        if (error.type === "StripeRateLimitError") {
-          return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 })
-        }
-
-        return NextResponse.json(
-          {
-            error: `Payment service error: ${error.message}`,
-            code: error.code,
-            type: error.type,
-          },
-          { status: 400 },
-        )
+        return NextResponse.json({ error: `Payment service error: ${error.message}` }, { status: 400 })
       }
 
       // Handle other errors
-      console.error("Error creating payment intent:", error)
-      return NextResponse.json(
-        {
-          error: "Failed to create payment intent",
-          details: error instanceof Error ? error.message : "Unknown error",
-        },
-        { status: 500 },
-      )
+      logPaymentError("payment_intent_creation", error, { amount, email })
+      return NextResponse.json({ error: "Failed to create payment intent" }, { status: 500 })
     }
   } catch (error) {
-    console.error("Request processing error:", error)
-    return NextResponse.json(
-      {
-        error: "Invalid request",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 400 },
-    )
+    logPaymentError("request_processing", error)
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 })
   }
 }
