@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: false,
-  swcMinify: false,
+  reactStrictMode: true,
+  swcMinify: true,
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -9,15 +9,9 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: true,
+    unoptimized: false,
     domains: [],
-  },
-  // Disable all experimental features
-  experimental: {},
-  // Disable webpack optimizations
-  webpack: (config) => {
-    config.optimization.minimize = false
-    return config
+    formats: ["image/avif", "image/webp"],
   },
 }
 
