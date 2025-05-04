@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Next.js 14.0.4 still supports swcMinify
   swcMinify: true,
   eslint: {
     ignoreDuringBuilds: true,
@@ -46,8 +45,7 @@ const nextConfig = {
         ],
       },
     ];
-  },
-  // Removed all custom webpack configurations
+  }
 }
 
 export default nextConfig;
