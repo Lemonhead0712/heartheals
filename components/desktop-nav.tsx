@@ -64,7 +64,7 @@ export function DesktopNav({ scrolled = false }: DesktopNavProps) {
     <PageContainer fullWidth withAuth={false} className="py-2" withGutter={false} maxWidth="3xl">
       <div className="flex items-center justify-between px-4 lg:px-6">
         <Link href="/" className="flex items-center space-x-2">
-          <Logo size="small" showText={true} />
+          <Logo size="small" showText={true} linkWrapped={true} />
         </Link>
 
         <div className="flex items-center space-x-4">

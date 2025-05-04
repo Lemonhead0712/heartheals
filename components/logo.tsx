@@ -9,9 +9,17 @@ interface LogoProps {
   animate?: boolean
   showText?: boolean
   textOverride?: string
+  linkWrapped?: boolean // Add this prop to indicate if the logo is already wrapped in a Link
 }
 
-export function Logo({ className = "", size = "medium", animate = false, showText = true, textOverride }: LogoProps) {
+export function Logo({
+  className = "",
+  size = "medium",
+  animate = false,
+  showText = true,
+  textOverride,
+  linkWrapped = false, // Default to false
+}: LogoProps) {
   const sizes = {
     small: { width: 32, height: 32 },
     medium: { width: 80, height: 80 },
