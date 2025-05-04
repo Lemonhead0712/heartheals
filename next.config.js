@@ -12,18 +12,10 @@ const nextConfig = {
     unoptimized: true, // Disable image optimization
     domains: [],
   },
-  // Disable webpack minification
-  webpack: (config, { dev, isServer }) => {
+  // Simplified webpack config
+  webpack: (config) => {
     // Disable minification completely
     config.optimization.minimize = false
-
-    // Remove the problematic minify plugin
-    if (config.optimization.minimizer) {
-      config.optimization.minimizer = config.optimization.minimizer.filter(
-        (minimizer) => !minimizer.constructor.name.includes("Terser"),
-      )
-    }
-
     return config
   },
 }
