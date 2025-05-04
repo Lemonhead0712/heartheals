@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Remove swcMinify as it's no longer needed in Next.js 15.2.4
+  // Next.js 14.0.4 still supports swcMinify
+  swcMinify: true,
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -9,18 +10,12 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    // Enable image optimization
     unoptimized: false,
-    // Configure image domains if needed
     domains: [],
-    // Configure image formats
     formats: ['image/avif', 'image/webp'],
-    // Configure device sizes for responsive images
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
-    // Configure image sizes for responsive images
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
-  // Configure headers for optimal caching
   async headers() {
     return [
       {
@@ -52,10 +47,7 @@ const nextConfig = {
       },
     ];
   },
-  // Simplified webpack configuration for Next.js 15.2.4
-  experimental: {
-    // Add any experimental features if needed
-  }
+  // Removed all custom webpack configurations
 }
 
 export default nextConfig;

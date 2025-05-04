@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect } from "react"
+import { createContext, useContext, useState, useEffect, useCallback } from "react"
 
 // Define a simplified context type that maintains the same interface
 // but provides universal access to all features
@@ -15,6 +15,7 @@ export type SubscriptionContextType = {
   // Feature access methods - now always return true
   canUseFeature: (featureId: string) => boolean
   useFeature: (featureId: string) => boolean
+  trackFeatureUsage: (featureId: string) => void // New method that doesn't return anything
   resetFeatureUsage: (featureId: string) => void
   // For compatibility with existing code
   setTier: (tier: string) => void
@@ -34,6 +35,7 @@ const defaultContextValue: SubscriptionContextType = {
   remainingDays: null,
   canUseFeature: () => true,
   useFeature: () => true,
+  trackFeatureUsage: () => {}, // New method
   resetFeatureUsage: () => {},
   setTier: () => {},
   setIsActive: () => {},
@@ -75,36 +77,46 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, [featureUsage])
 
   // Feature access is always granted
-  const canUseFeature = () => true
+  const canUseFeature = useCallback(() => true, [])
 
-  // Track feature usage for analytics only
-  const useFeature = (featureId: string) => {
+  // DEPRECATED: This method updates state during render and should not be used
+  // Keep it for backward compatibility but log a warning
+  const useFeature = useCallback((featureId: string) => {
+    console.warn(
+      "useFeature is deprecated and may cause React state updates during render. Use trackFeatureUsage instead.",
+    )
+    // Return true without updating state to avoid the error
+    return true
+  }, [])
+
+  // New method: Track feature usage without returning a value
+  // This should be called in useEffect, not during render
+  const trackFeatureUsage = useCallback((featureId: string) => {
     setFeatureUsage((prev) => ({
       ...prev,
       [featureId]: (prev[featureId] || 0) + 1,
     }))
-    return true
-  }
+  }, [])
 
   // Reset usage for a specific feature (for analytics)
-  const resetFeatureUsage = (featureId: string) => {
+  const resetFeatureUsage = useCallback((featureId: string) => {
     setFeatureUsage((prev) => ({
       ...prev,
       [featureId]: 0,
     }))
-  }
+  }, [])
 
   // Reset all feature usage (for analytics)
-  const resetAllFeatureUsage = () => {
+  const resetAllFeatureUsage = useCallback(() => {
     setFeatureUsage({})
-  }
+  }, [])
 
   // No-op functions for backward compatibility
-  const setTier = () => {}
-  const setIsActive = () => {}
-  const setExpiresAt = () => {}
-  const updateSubscriptionStatus = () => {}
-  const immediatelyActivatePremium = () => {}
+  const setTier = useCallback(() => {}, [])
+  const setIsActive = useCallback(() => {}, [])
+  const setExpiresAt = useCallback(() => {}, [])
+  const updateSubscriptionStatus = useCallback(() => {}, [])
+  const immediatelyActivatePremium = useCallback(() => {}, [])
 
   return (
     <SubscriptionContext.Provider
@@ -116,6 +128,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         remainingDays: null,
         canUseFeature,
         useFeature,
+        trackFeatureUsage,
         resetFeatureUsage,
         setTier,
         setIsActive,

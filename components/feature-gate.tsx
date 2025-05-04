@@ -1,6 +1,6 @@
 "use client"
 
-import type { ReactNode } from "react"
+import { useEffect, type ReactNode } from "react"
 import { useSubscription } from "@/contexts/subscription-context"
 
 interface FeatureGateProps {
@@ -18,13 +18,13 @@ export function FeatureGate({
   description = "This feature is available to all users.",
   showUpgradeButton = false,
 }: FeatureGateProps) {
-  // Get the useFeature function but don't call it in a way that creates an update loop
-  const { useFeature } = useSubscription()
+  // Get subscription context
+  const { trackFeatureUsage } = useSubscription()
 
-  // Call useFeature once when the component mounts
-  // This is safe because we're not updating state based on the result
-  // and we're not using the return value to conditionally render
-  useFeature(featureId)
+  // Track feature usage after component mounts, not during render
+  useEffect(() => {
+    trackFeatureUsage(featureId)
+  }, [featureId, trackFeatureUsage])
 
   // Always render the children - all features are accessible
   return <>{children}</>
