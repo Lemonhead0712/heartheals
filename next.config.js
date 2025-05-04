@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
+  swcMinify: false, // Disable SWC minification
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -9,9 +9,22 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: false,
+    unoptimized: true, // Disable image optimization
     domains: [],
-    formats: ["image/avif", "image/webp"],
+  },
+  // Disable webpack minification
+  webpack: (config, { dev, isServer }) => {
+    // Disable minification completely
+    config.optimization.minimize = false
+
+    // Remove the problematic minify plugin
+    if (config.optimization.minimizer) {
+      config.optimization.minimizer = config.optimization.minimizer.filter(
+        (minimizer) => !minimizer.constructor.name.includes("Terser"),
+      )
+    }
+
+    return config
   },
 }
 
