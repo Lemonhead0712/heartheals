@@ -4,7 +4,7 @@ import type React from "react"
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, BookHeart, Wind, BarChart3, CreditCard, Activity, User, Menu } from "lucide-react"
+import { Home, BookHeart, Wind, BarChart3, Activity, User, Menu } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useHapticContext } from "@/contexts/haptic-context"
 import { Logo } from "./logo"
@@ -156,7 +156,7 @@ export function BottomNav() {
                   </SheetTitle>
                 </SheetHeader>
                 <div className="py-6 flex flex-col space-y-2">
-                  {[...navItems, { name: "Premium", href: "/subscription", icon: CreditCard }].map((item) => {
+                  {navItems.map((item) => {
                     const isActive = pathname === item.href
                     return (
                       <Link

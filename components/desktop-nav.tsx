@@ -3,10 +3,9 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BookHeart, Clipboard, Home, Wind, Sparkles, Activity, User } from "lucide-react"
+import { BookHeart, Clipboard, Home, Wind, Activity, User } from "lucide-react"
 import { Logo } from "./logo"
 import { cn } from "@/lib/utils"
-import { useSubscription } from "@/contexts/subscription-context"
 import { useHapticContext } from "@/contexts/haptic-context"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
@@ -20,7 +19,6 @@ interface DesktopNavProps {
 export function DesktopNav({ scrolled = false }: DesktopNavProps) {
   const { user, logout } = useAuth()
   const pathname = usePathname()
-  const { tier, isActive } = useSubscription()
   const { haptic, settings } = useHapticContext()
   const isMobile = useMobile()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -56,11 +54,6 @@ export function DesktopNav({ scrolled = false }: DesktopNavProps) {
       name: "App Status",
       href: "/app-status",
       icon: Activity,
-    },
-    {
-      name: "Premium",
-      href: "/subscription",
-      icon: Sparkles,
     },
   ]
 

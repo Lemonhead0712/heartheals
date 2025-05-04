@@ -15,8 +15,6 @@ import { Logo } from "@/components/logo"
 import { BottomNav } from "@/components/bottom-nav"
 import { EmojiPicker } from "@/components/emoji-picker"
 import { FeatureGate } from "@/components/feature-gate"
-import { SubscriptionStatus } from "@/components/subscription-status"
-import { useEmotionLogs } from "@/hooks/use-emotion-logs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { PageContainer } from "@/components/page-container"
@@ -25,6 +23,7 @@ import { EnhancedEmotionalAnalytics } from "@/components/enhanced-emotional-anal
 import { formatRelativeTime } from "@/utils/date-utils"
 import { useRealTimeUpdate } from "@/hooks/use-real-time-update"
 import { DailyEmotionFolder } from "@/components/daily-emotion-folder"
+import { useEmotionLogs } from "@/hooks/use-emotion-logs"
 
 export default function EmotionalLogPage() {
   return (
@@ -164,7 +163,6 @@ function EmotionalLog() {
             <p className="text-pink-600">Track your emotions and reflect on your emotional patterns</p>
           </div>
           <div className="flex flex-col items-end">
-            <SubscriptionStatus />
             <div className="flex items-center mt-2">
               <Clock className="h-4 w-4 text-pink-500 mr-1" />
               <span className="text-xs text-pink-500">{new Date().toLocaleDateString()}</span>

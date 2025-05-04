@@ -9,14 +9,12 @@ import { AlertCircle, CheckCircle } from "lucide-react"
 export function HapticDebug() {
   const [isProviderAvailable, setIsProviderAvailable] = useState<boolean | null>(null)
   const [isHapticSupported, setIsHapticSupported] = useState<boolean | null>(null)
-
-  // Use the standardized hook name
-  const hapticContext = useHapticContext()
+  const [hapticContext, setHapticContext] = useState<any>(null)
 
   useEffect(() => {
     try {
       // Check if we can access the context
-      const contextImport = require("@/contexts/haptic-context")
+      const context = require("@/contexts/haptic-context")
       setIsProviderAvailable(true)
     } catch (error) {
       console.error("Error accessing haptic context:", error)
@@ -26,18 +24,22 @@ export function HapticDebug() {
 
   useEffect(() => {
     try {
-      setIsHapticSupported(hapticContext.isHapticSupported())
+      const context = useHapticContext()
+      setHapticContext(context)
+      setIsHapticSupported(context.isHapticSupported())
     } catch (error) {
       console.error("Haptic context not available:", error)
       setIsHapticSupported(false)
     }
-  }, [hapticContext])
+  }, [])
 
   const testHaptic = useCallback(() => {
-    hapticContext.haptic("medium")
-    setTimeout(() => {
-      hapticContext.patternHaptic("success")
-    }, 500)
+    if (hapticContext) {
+      hapticContext.haptic("medium")
+      setTimeout(() => {
+        hapticContext.patternHaptic("success")
+      }, 500)
+    }
   }, [hapticContext])
 
   return (

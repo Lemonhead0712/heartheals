@@ -5,14 +5,12 @@ import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { BookHeart, Clipboard, Wind } from "lucide-react"
 import { Logo } from "@/components/logo"
-import { Badge } from "@/components/ui/badge"
 import { WelcomeBanner } from "@/components/welcome-banner"
-import { useSubscription } from "@/contexts/subscription-context"
-import { SubscriptionStatus } from "@/components/subscription-status"
 import { SnapshotsSection } from "@/components/snapshots-section"
 import { QuickEmotionalLog } from "@/components/quick-emotional-log"
 import { EmotionTrendsWidget } from "@/components/emotion-trends-widget"
 import { InspirationalQuote } from "@/components/inspirational-quote"
+import { FreeModelBanner } from "@/components/free-model-banner"
 import type { EmotionEntry } from "@/utils/emotion-analytics"
 import { PageContainer } from "@/components/page-container"
 
@@ -26,8 +24,6 @@ type JournalEntry = {
 }
 
 export default function Home() {
-  const { tier, isActive, canUseFeature } = useSubscription()
-
   // Mock data for demonstration
   const [recentEmotions, setRecentEmotions] = useState<EmotionEntry[]>([])
   const [recentJournals, setRecentJournals] = useState<JournalEntry[]>([])
@@ -179,15 +175,6 @@ export default function Home() {
                 transition={{ duration: 1.5, delay: 0.5 }}
               />
             </motion.div>
-
-            <motion.div
-              variants={item}
-              className="mt-3 relative z-10"
-              whileHover={{ scale: 1.05 }}
-              transition={{ type: "spring", stiffness: 400, damping: 10 }}
-            >
-              <SubscriptionStatus />
-            </motion.div>
           </motion.div>
 
           {/* Welcome Banner for First-Time Users */}
@@ -215,16 +202,6 @@ export default function Home() {
                       <p className="text-pink-600 flex-grow">
                         Gently capture how you're feeling today and watch your healing unfold.
                       </p>
-                      {!canUseFeature("emotional-log") && tier !== "premium" && (
-                        <Badge variant="outline" className="mt-3 border-pink-300 text-pink-700">
-                          Free uses: 0/3
-                        </Badge>
-                      )}
-                      {tier === "premium" && !isActive && (
-                        <Badge variant="outline" className="mt-3 border-yellow-300 text-yellow-700">
-                          Premium inactive
-                        </Badge>
-                      )}
                     </CardContent>
                   </Card>
                 </Link>
@@ -239,16 +216,6 @@ export default function Home() {
                       <p className="text-blue-600 flex-grow">
                         Follow calming patterns and let soft animation guide your breath.
                       </p>
-                      {!canUseFeature("breathing-exercise") && tier !== "premium" && (
-                        <Badge variant="outline" className="mt-3 border-blue-300 text-blue-700">
-                          Free uses: 0/3
-                        </Badge>
-                      )}
-                      {tier === "premium" && !isActive && (
-                        <Badge variant="outline" className="mt-3 border-yellow-300 text-yellow-700">
-                          Premium inactive
-                        </Badge>
-                      )}
                     </CardContent>
                   </Card>
                 </Link>
@@ -263,16 +230,6 @@ export default function Home() {
                       <p className="text-purple-600 flex-grow">
                         Journal your feelings and gain insights through reflective exercises
                       </p>
-                      {!canUseFeature("journal-entry") && tier !== "premium" && (
-                        <Badge variant="outline" className="mt-3 border-purple-300 text-purple-700">
-                          Free uses: 0/3
-                        </Badge>
-                      )}
-                      {tier === "premium" && !isActive && (
-                        <Badge variant="outline" className="mt-3 border-yellow-300 text-yellow-700">
-                          Premium inactive
-                        </Badge>
-                      )}
                     </CardContent>
                   </Card>
                 </Link>
@@ -318,6 +275,9 @@ export default function Home() {
           </motion.div>
         </motion.div>
       </PageContainer>
+
+      {/* Free Model Banner */}
+      <FreeModelBanner />
     </div>
   )
 }

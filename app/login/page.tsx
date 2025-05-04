@@ -29,6 +29,7 @@ export default function LoginPage() {
   }>({})
   const [isFromPayment, setIsFromPayment] = useState(false)
   const [redirectPath, setRedirectPath] = useState<string | null>(null)
+  const [isRedirecting, setIsRedirecting] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const auth = useAuth()
@@ -125,6 +126,9 @@ export default function LoginPage() {
       const success = await auth.login(email, password, redirectPath || undefined)
 
       if (success) {
+        // Set redirecting state to show loading indicator
+        setIsRedirecting(true)
+
         // Safely trigger haptic feedback if available
         try {
           if (hapticContext && typeof hapticContext.haptic === "function") {
@@ -137,9 +141,7 @@ export default function LoginPage() {
 
         toast({
           title: "Login Successful",
-          description: isFromPayment
-            ? "Welcome back! Your premium subscription is now active."
-            : "Welcome back to HeartHeals!",
+          description: "Welcome back to HeartHeals! Redirecting to home page...",
           variant: "default",
         })
       } else {
@@ -160,7 +162,10 @@ export default function LoginPage() {
         variant: "destructive",
       })
     } finally {
-      setIsSubmitting(false)
+      // Keep isSubmitting true if we're redirecting to show loading state
+      if (!isRedirecting) {
+        setIsSubmitting(false)
+      }
     }
   }
 
@@ -193,9 +198,7 @@ export default function LoginPage() {
               <CardHeader className="pb-4">
                 <CardTitle className="text-2xl font-bold text-center text-purple-800">Welcome Back</CardTitle>
                 <CardDescription className="text-center text-purple-600">
-                  {isFromPayment
-                    ? "Log in to access your premium features"
-                    : "Log in to continue your wellness journey"}
+                  Log in to continue your wellness journey
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
@@ -203,15 +206,6 @@ export default function LoginPage() {
                   <Alert className="mb-4 border-red-200 bg-red-50 text-red-800">
                     <AlertCircle className="h-4 w-4 text-red-600 mr-2" />
                     <AlertDescription>{authError.message}</AlertDescription>
-                  </Alert>
-                )}
-
-                {isFromPayment && (
-                  <Alert className="mb-4 border-blue-200 bg-blue-50 text-blue-800">
-                    <AlertCircle className="h-4 w-4 text-blue-600 mr-2" />
-                    <AlertDescription>
-                      Your payment was successful! Log in to access your premium features.
-                    </AlertDescription>
                   </Alert>
                 )}
 
@@ -299,7 +293,7 @@ export default function LoginPage() {
                       {isSubmitting ? (
                         <span className="flex items-center justify-center">
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Logging in...
+                          {isRedirecting ? "Redirecting..." : "Logging in..."}
                         </span>
                       ) : (
                         "Log In"

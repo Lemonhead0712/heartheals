@@ -4,39 +4,23 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Sparkles, X } from "lucide-react"
-import { useSubscription } from "@/contexts/subscription-context"
+import { Heart, X } from "lucide-react"
 
-export function PremiumFeaturesBanner() {
+export function FreeModelBanner() {
   const [isVisible, setIsVisible] = useState(false)
-  const [hasShown, setHasShown] = useState(false)
-  const { tier, isActive } = useSubscription()
 
   useEffect(() => {
-    // Check if this is a newly activated premium account
-    const checkNewActivation = () => {
-      try {
-        const lastActivationTime = localStorage.getItem("heartsHeal_lastActivationBanner")
-        const now = Date.now()
+    // Check if this is the first time the user is seeing the banner
+    const hasSeenBanner = localStorage.getItem("heartsHeal_hasSeenFreeModelBanner")
 
-        // If premium is active and banner hasn't been shown in the last 24 hours
-        if (tier === "premium" && isActive) {
-          if (!lastActivationTime || now - Number.parseInt(lastActivationTime, 10) > 24 * 60 * 60 * 1000) {
-            // Show banner after a short delay
-            setTimeout(() => {
-              setIsVisible(true)
-              setHasShown(true)
-              localStorage.setItem("heartsHeal_lastActivationBanner", now.toString())
-            }, 1000)
-          }
-        }
-      } catch (error) {
-        console.error("Error checking activation banner status:", error)
-      }
+    if (!hasSeenBanner) {
+      // Show banner after a short delay
+      setTimeout(() => {
+        setIsVisible(true)
+        localStorage.setItem("heartsHeal_hasSeenFreeModelBanner", "true")
+      }, 1000)
     }
-
-    checkNewActivation()
-  }, [tier, isActive])
+  }, [])
 
   const handleDismiss = () => {
     setIsVisible(false)
@@ -67,28 +51,30 @@ export function PremiumFeaturesBanner() {
 
           <CardContent className="pt-6 pb-4">
             <div className="flex items-center mb-3">
-              <Sparkles className="h-5 w-5 text-purple-500 mr-2" />
-              <h3 className="font-medium text-purple-800">Premium Features Activated!</h3>
+              <Heart className="h-5 w-5 text-purple-500 mr-2 fill-purple-200" />
+              <h3 className="font-medium text-purple-800">All Features Now Available!</h3>
             </div>
 
-            <p className="text-sm text-purple-700 mb-3">Your account now has full access to all premium features.</p>
+            <p className="text-sm text-purple-700 mb-3">
+              HeartHeals is now completely free with full access to all features for everyone.
+            </p>
 
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="flex items-center bg-purple-50 p-2 rounded">
-                <Sparkles className="h-3 w-3 text-purple-400 mr-1 flex-shrink-0" />
+                <Heart className="h-3 w-3 text-purple-400 mr-1 flex-shrink-0" />
                 <span className="text-purple-700">Unlimited logs</span>
               </div>
               <div className="flex items-center bg-purple-50 p-2 rounded">
-                <Sparkles className="h-3 w-3 text-purple-400 mr-1 flex-shrink-0" />
+                <Heart className="h-3 w-3 text-purple-400 mr-1 flex-shrink-0" />
                 <span className="text-purple-700">Advanced analytics</span>
               </div>
               <div className="flex items-center bg-purple-50 p-2 rounded">
-                <Sparkles className="h-3 w-3 text-purple-400 mr-1 flex-shrink-0" />
+                <Heart className="h-3 w-3 text-purple-400 mr-1 flex-shrink-0" />
                 <span className="text-purple-700">Data export</span>
               </div>
               <div className="flex items-center bg-purple-50 p-2 rounded">
-                <Sparkles className="h-3 w-3 text-purple-400 mr-1 flex-shrink-0" />
-                <span className="text-purple-700">Premium support</span>
+                <Heart className="h-3 w-3 text-purple-400 mr-1 flex-shrink-0" />
+                <span className="text-purple-700">All premium features</span>
               </div>
             </div>
           </CardContent>

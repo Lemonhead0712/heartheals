@@ -2,16 +2,14 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Playfair_Display, Inter } from "next/font/google"
 import "./globals.css"
-// Fix the import path - remove /src if it's not in the path
 import { ThemeProviderFixed as ThemeProvider } from "@/components/theme-provider-fixed"
-// Fix the subscription context import path
 import { SubscriptionProvider } from "@/contexts/subscription-context"
 import { Toaster } from "@/components/ui/toaster"
 import { HapticProvider } from "@/contexts/haptic-context"
 import { AuthProvider } from "@/contexts/auth-context"
 import { MainLayout } from "@/components/layouts/main-layout"
 import { PageTransitionEffect } from "@/components/page-transition-effect"
-import { PremiumFeaturesBanner } from "@/components/premium-features-banner"
+import { FreeModelBanner } from "@/components/free-model-banner"
 
 // Elegant serif font for headings
 const playfair = Playfair_Display({
@@ -61,6 +59,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     process.env.NEXT_PUBLIC_APP_ENV = appEnv
   }
 
+  // Rest of your layout code...
+
   return (
     <html lang="en" className={`h-full ${playfair.variable} ${inter.variable}`}>
       <body className={`${inter.className} flex min-h-full flex-col bg-background antialiased`}>
@@ -70,7 +70,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <HapticProvider>
                 <MainLayout>
                   {children}
-                  <PremiumFeaturesBanner />
+                  <FreeModelBanner />
                 </MainLayout>
                 <PageTransitionEffect />
                 <Toaster />

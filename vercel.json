@@ -9,5 +9,5 @@
     }
   },
   "framework": "nextjs",
-  "buildCommand": "npm run build"
+  "buildCommand": "pnpm install && pnpm build"
 }
