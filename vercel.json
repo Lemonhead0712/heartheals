@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
-  "buildCommand": "pnpm install && pnpm build",
-  "installCommand": "pnpm install",
+  "buildCommand": "rm -rf node_modules .next && pnpm install --force && pnpm build",
+  "installCommand": "pnpm install --force",
   "cleanUrls": true
 }

@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  swcMinify: true,
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -12,7 +13,6 @@ const nextConfig = {
     domains: [],
     formats: ["image/avif", "image/webp"],
   },
-  // Minimal configuration to avoid webpack issues
 }
 
 module.exports = nextConfig
