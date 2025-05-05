@@ -1,6 +1,10 @@
 {
   "framework": "nextjs",
-  "buildCommand": "rm -rf node_modules .next && pnpm install --force && pnpm build",
+  "buildCommand": "rm -rf node_modules .next && pnpm install --force && NEXT_DISABLE_SOURCEMAPS=false NEXT_DISABLE_MINIFICATION=true pnpm build",
   "installCommand": "pnpm install --force",
-  "cleanUrls": true
+  "cleanUrls": true,
+  "env": {
+    "NEXT_DISABLE_MINIFICATION": "true",
+    "NEXT_DISABLE_SOURCEMAPS": "false"
+  }
 }

@@ -1,15 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Enable SWC minification instead of Terser
-  swcMinify: true,
+  // Disable SWC minification
+  swcMinify: false,
   eslint: {
     ignoreDuringBuilds: true,
   },
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Use Next.js image optimization
+  // Use Next.js image optimization but keep code unminified
   images: {
     domains: ['placeholder.svg'],
     formats: ['image/avif', 'image/webp'],
@@ -47,41 +47,40 @@ const nextConfig = {
       },
     ];
   },
-  // Configure webpack for better optimization
+  // Configure webpack to disable minification
   webpack: (config, { dev, isServer }) => {
-    // Production optimizations only
-    if (!dev && !isServer) {
-      // Use SWC for minification instead of disabling it completely
-      config.optimization.minimize = true;
-      
-      // Split chunks more aggressively
-      config.optimization.splitChunks = {
-        chunks: 'all',
-        cacheGroups: {
-          default: false,
-          vendors: false,
-          // Vendor chunk for third-party libraries
-          vendor: {
-            name: 'vendor',
-            chunks: 'all',
-            test: /node_modules/,
-            priority: 20,
-          },
-          // Common chunk for shared code
-          common: {
-            name: 'common',
-            minChunks: 2,
-            chunks: 'all',
-            priority: 10,
-            reuseExistingChunk: true,
-            enforce: true,
-          },
+    // Disable minification completely
+    config.optimization.minimize = false;
+    
+    // Keep chunk splitting for better loading but without minification
+    config.optimization.splitChunks = {
+      chunks: 'all',
+      cacheGroups: {
+        default: false,
+        vendors: false,
+        // Vendor chunk for third-party libraries
+        vendor: {
+          name: 'vendor',
+          chunks: 'all',
+          test: /node_modules/,
+          priority: 20,
         },
-      };
-    }
+        // Common chunk for shared code
+        common: {
+          name: 'common',
+          minChunks: 2,
+          chunks: 'all',
+          priority: 10,
+          reuseExistingChunk: true,
+          enforce: true,
+        },
+      },
+    };
     
     return config;
   },
+  // Disable compression
+  compress: false,
 }
 
 export default nextConfig;
