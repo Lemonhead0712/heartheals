@@ -1,4 +1,6 @@
 {
-  "buildCommand": "NEXT_DISABLE_MINIFICATION=true NEXT_DISABLE_SOURCEMAPS=false next build",
-  "installCommand": "pnpm install"
+  "framework": "nextjs",
+  "buildCommand": "NEXT_DISABLE_MINIFICATION=true next build",
+  "installCommand": "pnpm install",
+  "cleanUrls": true
 }

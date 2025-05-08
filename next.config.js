@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Remove swcMinify as it's not supported in your version
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -15,14 +14,11 @@ const nextConfig = {
   },
   // Configure webpack to disable minification
   webpack: (config, { dev }) => {
-    // Disable minification even in production
     if (!dev) {
       config.optimization.minimize = false
     }
-
     return config
   },
-  // Disable compression in output
   compress: false,
 }
 
