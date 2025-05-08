@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { EmojiPicker } from "@/components/emoji-picker"
@@ -26,23 +25,17 @@ export function QuickEmotionalLog() {
   const [notes, setNotes] = useState("")
   const [intensity, setIntensity] = useState(5)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [hapticAvailable, setHapticAvailable] = useState(true)
+  const [hapticAvailable, setHapticAvailable] = useState(false)
+  const hapticContext = useHapticContext()
+  const { haptic, patternHaptic } = hapticContext || fallbackHaptic
 
   const { addEntry } = useEmotionLogs()
   const { toast } = useToast()
 
-  // Try to use the haptic context, but provide fallbacks if it fails
-  let hapticContext
-  try {
-    hapticContext = useHapticContext()
-    if (!hapticAvailable) setHapticAvailable(true)
-  } catch (error) {
-    console.error("Haptic context not available:", error)
-    hapticContext = fallbackHaptic
-    setHapticAvailable(false)
-  }
-
-  const { haptic, patternHaptic } = hapticContext
+  // Use effect to safely try to get the haptic context
+  useEffect(() => {
+    setHapticAvailable(!!hapticContext)
+  }, [hapticContext])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -92,9 +85,10 @@ export function QuickEmotionalLog() {
   }
 
   const handleIntensityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setIntensity(Number.parseInt(e.target.value))
+    const newIntensity = Number.parseInt(e.target.value)
+    setIntensity(newIntensity)
     // Only trigger haptic on significant changes to avoid too much vibration
-    if (hapticAvailable && Math.abs(intensity - Number.parseInt(e.target.value)) >= 2) {
+    if (hapticAvailable && Math.abs(intensity - newIntensity) >= 2) {
       haptic("light")
     }
   }

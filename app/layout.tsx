@@ -59,7 +59,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     // Only do this server-side to avoid hydration issues
     const appEnv = process.env.NODE_ENV || "development"
     // Use NEXT_PUBLIC so it's accessible on the client
-    process.env.NEXT_PUBLIC_APP_ENV = appEnv
+    if (process.env.NEXT_PUBLIC_APP_ENV === undefined) {
+      process.env.NEXT_PUBLIC_APP_ENV = appEnv
+    }
   }
 
   return (
