@@ -15,7 +15,7 @@ interface HapticContextType {
   updateSettings: (settings: { enabled?: boolean; intensity?: HapticIntensity }) => void
 }
 
-const HapticContext = createContext<HapticContextType | undefined>(undefined)
+export const HapticContext = createContext<HapticContextType | undefined>(undefined)
 
 export function HapticProvider({ children }: { children: ReactNode }) {
   const hapticUtils = useHaptic()

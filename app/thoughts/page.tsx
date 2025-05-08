@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ChevronLeft, Save, AlertCircle, Loader2, RefreshCw } from "lucide-react"
 import { motion } from "framer-motion"
-import { Logo } from "@/components/logo"
 import { EmotionalAwarenessMeter } from "@/components/emotional-awareness-meter"
 import { SelfCompassionPractice } from "@/components/self-compassion-practice"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -886,10 +885,6 @@ export default function ThoughtsPage() {
           initial="hidden"
           animate="show"
         >
-          <motion.div className="flex flex-col items-center mb-6" variants={item}>
-            <Logo size="small" />
-          </motion.div>
-
           <motion.div className="mb-8" variants={item}>
             <Link href="/" className="inline-flex items-center text-purple-700 hover:text-purple-900 transition-colors">
               <ChevronLeft className="mr-1 h-4 w-4" />

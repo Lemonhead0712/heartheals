@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ChevronLeft, Plus, Save, AlertCircle, RefreshCw, Clock, Calendar } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Logo } from "@/components/logo"
 import { BottomNav } from "@/components/bottom-nav"
 import { EmojiPicker } from "@/components/emoji-picker"
 import { FeatureGate } from "@/components/feature-gate"
@@ -24,6 +23,7 @@ import { formatRelativeTime } from "@/utils/date-utils"
 import { useRealTimeUpdate } from "@/hooks/use-real-time-update"
 import { DailyEmotionFolder } from "@/components/daily-emotion-folder"
 import { useEmotionLogs } from "@/hooks/use-emotion-logs"
+import { EmotionalSurveyVisualizer } from "@/components/emotional-survey-visualizer"
 
 export default function EmotionalLogPage() {
   return (
@@ -149,10 +149,6 @@ function EmotionalLog() {
         initial="hidden"
         animate="show"
       >
-        <motion.div className="flex flex-col items-center mb-6" variants={item}>
-          <Logo size="small" />
-        </motion.div>
-
         <motion.div className="mb-8 flex justify-between items-center" variants={item}>
           <div>
             <Link href="/" className="inline-flex items-center text-pink-700 hover:text-pink-900 transition-colors">
@@ -346,6 +342,12 @@ function EmotionalLog() {
             )}
           </motion.div>
         </FeatureGate>
+
+        {/* Emotional Survey Visualizer Section */}
+        <motion.div className="mt-10" variants={item}>
+          <h2 className="text-2xl font-semibold text-pink-800 mb-4">Survey Insights</h2>
+          <EmotionalSurveyVisualizer entries={emotionLogs} isLoading={isLoading} error={error} />
+        </motion.div>
 
         {/* Enhanced Emotional Analytics Section */}
         <motion.div className="mt-10" variants={item}>
