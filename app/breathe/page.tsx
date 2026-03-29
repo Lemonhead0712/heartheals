@@ -640,15 +640,15 @@ export default function BreathePage() {
 
   return (
     <PageContainer>
-      <div className="min-h-screen bg-gradient-to-br from-[#fce4ec] via-[#e0f7fa] to-[#ede7f6]">
+      <div className="min-h-screen bg-page-gradient">
         <motion.div
-          className="container mx-auto px-4 py-8 max-w-4xl"
+          className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 pb-10 md:pt-10 md:pb-16"
           variants={container}
           initial="hidden"
           animate="show"
         >
           <motion.div className="flex justify-between items-center mb-6" variants={item}>
-            <Link href="/" className="inline-flex items-center text-blue-700 hover:text-blue-900 transition-colors">
+            <Link href="/" className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors text-sm">
               <ChevronLeft className="mr-1 h-4 w-4" />
               Back to Dashboard
             </Link>
@@ -660,7 +660,7 @@ export default function BreathePage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => setSoundEnabled(!soundEnabled)}
-                      className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
+                      className="text-muted-foreground hover:text-foreground hover:bg-secondary"
                     >
                       {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
                     </Button>
@@ -674,8 +674,8 @@ export default function BreathePage() {
           </motion.div>
 
           <motion.div className="text-center mb-8" variants={item}>
-            <h1 className="text-3xl font-bold text-blue-800 mb-2">Breathe With Me</h1>
-            <p className="text-blue-600">Follow guided breathing patterns to find calm and balance</p>
+            <h1 className="font-serif text-3xl sm:text-4xl font-semibold tracking-tight text-foreground mb-2">Breathe With Me</h1>
+            <p className="text-muted-foreground">Follow guided breathing patterns to find calm and balance</p>
           </motion.div>
 
           {!selectedPattern ? (
@@ -698,10 +698,10 @@ export default function BreathePage() {
               >
                 {filteredPatterns.map((pattern) => (
                   <motion.div key={pattern.id} variants={item}>
-                    <Card className="h-full border-blue-200 bg-white/90 backdrop-blur-sm shadow-md hover:shadow-lg transition-all cursor-pointer hover:scale-[1.02] duration-300">
+                    <Card className="feature-card h-full border-border/40 bg-card cursor-pointer">
                       <CardHeader>
                         <div className="flex justify-between items-start">
-                          <CardTitle className="text-blue-700">{pattern.name}</CardTitle>
+                          <CardTitle className="text-foreground">{pattern.name}</CardTitle>
                           <Badge
                             variant="outline"
                             className={
@@ -715,10 +715,10 @@ export default function BreathePage() {
                             {pattern.category}
                           </Badge>
                         </div>
-                        <CardDescription className="text-blue-600">{pattern.description}</CardDescription>
+                        <CardDescription className="text-muted-foreground">{pattern.description}</CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <div className="flex justify-center items-center space-x-2 text-sm text-blue-600">
+                        <div className="flex justify-center items-center space-x-2 text-sm text-muted-foreground">
                           <div className="text-center">
                             <div className="font-medium">{pattern.inhale}s</div>
                             <div>Inhale</div>
@@ -726,7 +726,7 @@ export default function BreathePage() {
 
                           {pattern.hold1 && (
                             <>
-                              <div className="text-blue-300">→</div>
+                              <div className="text-border">→</div>
                               <div className="text-center">
                                 <div className="font-medium">{pattern.hold1}s</div>
                                 <div>Hold</div>
@@ -734,7 +734,7 @@ export default function BreathePage() {
                             </>
                           )}
 
-                          <div className="text-blue-300">→</div>
+                          <div className="text-border">→</div>
                           <div className="text-center">
                             <div className="font-medium">{pattern.exhale}s</div>
                             <div>Exhale</div>
@@ -742,7 +742,7 @@ export default function BreathePage() {
 
                           {pattern.hold2 && (
                             <>
-                              <div className="text-blue-300">→</div>
+                              <div className="text-border">→</div>
                               <div className="text-center">
                                 <div className="font-medium">{pattern.hold2}s</div>
                                 <div>Hold</div>
@@ -754,7 +754,7 @@ export default function BreathePage() {
                       <CardFooter className="flex justify-between">
                         <Dialog>
                           <DialogTrigger asChild>
-                            <Button variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-100">
+                            <Button variant="outline" className="border-border text-foreground hover:bg-secondary">
                               <Info className="mr-2 h-4 w-4" />
                               Info
                             </Button>
@@ -785,7 +785,7 @@ export default function BreathePage() {
                           </DialogContent>
                         </Dialog>
                         <Button
-                          className="bg-blue-600 hover:bg-blue-700"
+                          className="bg-primary hover:bg-primary/90 text-primary-foreground"
                           onClick={() => startBreathingWithCountdown(pattern)}
                         >
                           Start
@@ -797,15 +797,15 @@ export default function BreathePage() {
 
                 {/* Custom breathing pattern card */}
                 <motion.div variants={item}>
-                  <Card className="h-full border-blue-200 bg-white/90 backdrop-blur-sm shadow-md hover:shadow-lg transition-all">
+                  <Card className="feature-card h-full border-border/40 bg-card">
                     <CardHeader>
                       <div className="flex justify-between items-start">
-                        <CardTitle className="text-blue-700">Custom Breathing</CardTitle>
-                        <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200">
+                        <CardTitle className="text-foreground">Custom Breathing</CardTitle>
+                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
                           Personalized
                         </Badge>
                       </div>
-                      <CardDescription className="text-blue-600">
+                      <CardDescription className="text-muted-foreground">
                         Create your own custom breathing pattern with personalized timings
                       </CardDescription>
                     </CardHeader>
@@ -870,7 +870,7 @@ export default function BreathePage() {
                     </CardContent>
                     <CardFooter>
                       <Button
-                        className="w-full bg-blue-600 hover:bg-blue-700"
+                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                         onClick={() => {
                           const customPattern: BreathingPattern = {
                             id: "custom",
@@ -936,15 +936,15 @@ export default function BreathePage() {
                 />
               </AnimatePresence>
 
-              <Card className="w-full max-w-md border-blue-200 bg-white/80 backdrop-blur-sm shadow-md mb-6">
+              <Card className="w-full max-w-md glass-card-elevated rounded-2xl mb-6">
                 <CardHeader>
                   <div className="flex justify-between items-center">
-                    <CardTitle className="text-blue-700">{selectedPattern.name}</CardTitle>
-                    <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                    <CardTitle className="text-foreground">{selectedPattern.name}</CardTitle>
+                    <Badge className="bg-primary/10 text-primary border-primary/20">
                       {cycles}/{totalCycles} Cycles
                     </Badge>
                   </div>
-                  <CardDescription className="text-blue-600">
+                  <CardDescription className="text-muted-foreground">
                     {showInstructions ? (
                       <div className="text-sm space-y-1">
                         <ol className="list-decimal pl-5">
@@ -954,7 +954,7 @@ export default function BreathePage() {
                         </ol>
                         <Button
                           variant="link"
-                          className="p-0 h-auto text-blue-600"
+                          className="p-0 h-auto text-primary"
                           onClick={() => setShowInstructions(false)}
                         >
                           Hide instructions
@@ -965,7 +965,7 @@ export default function BreathePage() {
                         {selectedPattern.description}{" "}
                         <Button
                           variant="link"
-                          className="p-0 h-auto text-blue-600"
+                          className="p-0 h-auto text-primary"
                           onClick={() => setShowInstructions(true)}
                         >
                           Show instructions
@@ -978,13 +978,13 @@ export default function BreathePage() {
 
               {/* Phase indicator */}
               <div className="w-full max-w-md mb-4">
-                <Card className="border-blue-200 bg-white/80 backdrop-blur-sm shadow-sm">
+                <Card className="glass-card rounded-2xl">
                   <CardContent className="p-4">
                     <div className="text-center">
-                      <h3 className="text-xl font-medium text-blue-800">{getPhaseText()}</h3>
-                      <p className="text-blue-600 text-sm">{getPhaseInstructions()}</p>
+                      <h3 className="text-xl font-semibold text-foreground">{getPhaseText()}</h3>
+                      <p className="text-muted-foreground text-sm">{getPhaseInstructions()}</p>
                       {counterEnabled && currentCount > 0 && (
-                        <div className="mt-2 text-sm font-medium text-blue-700">Count: {currentCount}</div>
+                        <div className="mt-2 text-sm font-medium text-primary">Count: {currentCount}</div>
                       )}
                     </div>
                   </CardContent>
@@ -1072,7 +1072,7 @@ export default function BreathePage() {
                 <Button
                   variant="outline"
                   size="lg"
-                  className="border-blue-300 text-blue-700 hover:bg-blue-100 w-full sm:w-1/3"
+                  className="border-border text-foreground hover:bg-secondary w-full sm:w-1/3"
                   onClick={() => {
                     setSelectedPattern(null)
                     setIsActive(false)
@@ -1083,7 +1083,7 @@ export default function BreathePage() {
                   Choose Another
                 </Button>
 
-                <Button size="lg" className="bg-blue-600 hover:bg-blue-700 w-full sm:w-1/3" onClick={toggleActive}>
+                <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground w-full sm:w-1/3" onClick={toggleActive}>
                   {isActive ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
                   {isActive ? "Pause" : "Resume"}
                 </Button>
@@ -1091,7 +1091,7 @@ export default function BreathePage() {
                 <Button
                   variant="outline"
                   size="lg"
-                  className="border-blue-300 text-blue-700 hover:bg-blue-100 w-full sm:w-1/3"
+                  className="border-border text-foreground hover:bg-secondary w-full sm:w-1/3"
                   onClick={resetExercise}
                 >
                   <RefreshCw className="mr-2 h-4 w-4" />
@@ -1101,7 +1101,7 @@ export default function BreathePage() {
 
               {/* Settings for cycles */}
               <div className="w-full max-w-md mt-6">
-                <Card className="border-blue-200 bg-white/80 backdrop-blur-sm shadow-sm">
+                <Card className="glass-card rounded-2xl">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="cycles">Number of cycles: {totalCycles}</Label>
@@ -1122,10 +1122,10 @@ export default function BreathePage() {
 
               {/* Audio Counter Settings */}
               <div className="w-full max-w-md mt-4">
-                <Card className="border-blue-200 bg-white/80 backdrop-blur-sm shadow-sm">
+                <Card className="glass-card rounded-2xl">
                   <CardHeader className="p-4 pb-2">
                     <div className="flex justify-between items-center">
-                      <CardTitle className="text-lg font-medium text-blue-800">Audio Counter</CardTitle>
+                      <CardTitle className="text-lg font-medium text-foreground">Audio Counter</CardTitle>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -1143,7 +1143,7 @@ export default function BreathePage() {
                     </div>
 
                     {showCounterSettings && (
-                      <div className="space-y-4 mt-4 border-t pt-4 border-blue-100">
+                      <div className="space-y-4 mt-4 border-t pt-4 border-border/50">
                         <div className="space-y-2">
                           <Label>Counter Sound</Label>
                           <RadioGroup
@@ -1196,7 +1196,7 @@ export default function BreathePage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="text-blue-700 border-blue-300 hover:bg-blue-50"
+                            className="text-foreground border-border hover:bg-secondary"
                             onClick={() => setShowCounterSettings(false)}
                           >
                             <Save size={14} className="mr-1" />
