@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Logo } from "./logo"
 
 const affirmations = [
-  "Healing takes time, and that's okay.",
+  "Healing takes time, and that is okay.",
   "Every breath is a step toward peace.",
   "You are stronger than you feel right now.",
   "Grief is love looking for a home.",
@@ -19,45 +19,42 @@ export function LoadingScreen() {
     const interval = setInterval(() => {
       setCurrentAffirmation((prev) => (prev + 1) % affirmations.length)
     }, 3000)
-
     return () => clearInterval(interval)
   }, [])
 
   return (
-    <div className="fixed inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-pink-50 via-blue-50 to-purple-50 z-50">
+    <div className="fixed inset-0 flex flex-col items-center justify-center bg-page-gradient z-50">
       <Logo size="large" />
 
       <div className="h-16 mt-8 overflow-hidden">
         <AnimatePresence mode="wait">
           <motion.p
             key={currentAffirmation}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.5 }}
-            className="text-center text-lg text-purple-700 max-w-md px-4"
+            exit={{ opacity: 0, y: -16 }}
+            transition={{ duration: 0.4 }}
+            className="text-center text-lg font-serif italic text-muted-foreground max-w-md px-4"
           >
             {affirmations[currentAffirmation]}
           </motion.p>
         </AnimatePresence>
       </div>
 
-      <div className="mt-8 flex space-x-2">
-        <motion.div
-          animate={{ scale: [1, 1.2, 1] }}
-          transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY, repeatDelay: 0.5 }}
-          className="w-3 h-3 rounded-full bg-pink-400"
-        />
-        <motion.div
-          animate={{ scale: [1, 1.2, 1] }}
-          transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY, repeatDelay: 0.5, delay: 0.5 }}
-          className="w-3 h-3 rounded-full bg-blue-400"
-        />
-        <motion.div
-          animate={{ scale: [1, 1.2, 1] }}
-          transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY, repeatDelay: 0.5, delay: 1 }}
-          className="w-3 h-3 rounded-full bg-purple-400"
-        />
+      <div className="mt-8 flex gap-2">
+        {[0, 1, 2].map((i) => (
+          <motion.div
+            key={i}
+            animate={{ scale: [1, 1.3, 1] }}
+            transition={{
+              duration: 1.2,
+              repeat: Number.POSITIVE_INFINITY,
+              repeatDelay: 0.3,
+              delay: i * 0.3,
+            }}
+            className="w-2.5 h-2.5 rounded-full bg-primary/40"
+          />
+        ))}
       </div>
     </div>
   )

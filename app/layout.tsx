@@ -1,6 +1,6 @@
 import type React from "react"
-import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import type { Metadata, Viewport } from "next"
+import { DM_Sans, Playfair_Display } from "next/font/google"
 import "./globals.css"
 import { ThemeProviderFixed as ThemeProvider } from "@/components/theme-provider-fixed"
 import { SubscriptionProvider } from "@/contexts/subscription-context"
@@ -10,14 +10,28 @@ import { HapticProvider } from "@/contexts/haptic-context"
 import { DesktopNav } from "@/components/desktop-nav"
 import { Footer } from "@/components/footer"
 
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  weight: ["400", "500", "600", "700"],
+})
 
-const inter = Inter({ subsets: ["latin"] })
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-serif",
+  weight: ["400", "500", "600", "700"],
+})
 
 export const metadata: Metadata = {
-  title: "HeartsHeal♥",
+  title: "HeartsHeal",
   description: "A safe space for emotional healing, reflection, and growth",
-  viewport: "width=device-width, initial-scale=1, viewport-fit=cover",
-    generator: 'v0.app'
+}
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#f5f0ed",
 }
 
 export default function RootLayout({
@@ -26,14 +40,14 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="h-full">
-      <body className={`${inter.className} flex min-h-full flex-col`}>
+    <html lang="en" className={`h-full ${dmSans.variable} ${playfair.variable}`}>
+      <body className="font-sans flex min-h-full flex-col antialiased">
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
           <SubscriptionProvider>
             <HapticProvider>
               <div className="flex flex-1 flex-col">
                 <DesktopNav />
-                <main className="flex-1 pb-16 md:pb-0">{children}</main>
+                <main className="flex-1 pb-20 md:pb-0">{children}</main>
                 <Footer />
               </div>
               <BottomNav />

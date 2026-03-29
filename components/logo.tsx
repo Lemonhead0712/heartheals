@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import { motion } from "framer-motion"
+import { cn } from "@/lib/utils"
 
 export function Logo({
   className = "",
@@ -15,17 +16,17 @@ export function Logo({
   showText?: boolean
 }) {
   const sizes = {
-    small: { width: 32, height: 32 },
-    medium: { width: 80, height: 80 },
-    large: { width: 120, height: 120 },
+    small: { width: 28, height: 28 },
+    medium: { width: 72, height: 72 },
+    large: { width: 100, height: 100 },
   }
 
   const logoComponent = animate ? (
     <motion.div
-      initial={{ scale: 0.9 }}
-      animate={{ scale: [0.9, 1.05, 0.9] }}
+      initial={{ scale: 0.95 }}
+      animate={{ scale: [0.95, 1.02, 0.95] }}
       transition={{
-        duration: 3,
+        duration: 4,
         repeat: Number.POSITIVE_INFINITY,
         repeatType: "reverse",
         ease: "easeInOut",
@@ -36,7 +37,7 @@ export function Logo({
         alt="HeartsHeal Logo"
         width={sizes[size].width}
         height={sizes[size].height}
-        className="drop-shadow-md"
+        className="drop-shadow-sm"
         priority
       />
     </motion.div>
@@ -46,22 +47,25 @@ export function Logo({
       alt="HeartsHeal Logo"
       width={sizes[size].width}
       height={sizes[size].height}
-      className="drop-shadow-md"
+      className="drop-shadow-sm"
       priority
     />
   )
 
   return (
-    <div className={`flex flex-col items-center ${className}`}>
+    <div className={cn("flex items-center gap-2", className)}>
       {logoComponent}
       {showText && (
-        <h2
-          className={`font-semibold text-purple-700 mt-1 ${
-            size === "small" ? "text-sm" : size === "medium" ? "text-xl" : "text-2xl"
-          }`}
+        <span
+          className={cn(
+            "font-serif font-semibold tracking-tight text-foreground",
+            size === "small" && "text-base",
+            size === "medium" && "text-xl",
+            size === "large" && "text-2xl",
+          )}
         >
-          HeartHeals
-        </h2>
+          HeartsHeal
+        </span>
       )}
     </div>
   )
