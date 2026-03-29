@@ -1,105 +1,92 @@
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
-import { forwardWebhookEventToAll } from "@/lib/webhook-forwarder"
-import { generateIdempotencyKey } from "@/lib/webhook-service"
-import { logError } from "@/utils/error-utils"
 
-// Initialize Stripe with the secret key from environment variables
-const getStripeInstance = () => {
-  const secretKey = process.env.STRIPE_SECRET_KEY
-
-  if (!secretKey) {
-    throw new Error("Stripe secret key is missing")
-  }
-
-  return new Stripe(secretKey, {
+// Initialize Stripe with secret keys
+const getStripeInstance = (isTestMode: boolean) => {
+  // In a real app, you would use environment variables for these keys
+  const testKey = "sk_test_51NxXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+  const liveKey = "sk_live_51NxXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+  return new Stripe(isTestMode ? testKey : liveKey, {
     apiVersion: "2023-10-16",
   })
 }
 
-// Process rate limiting for webhooks
-const processRateLimit = (signature: string): boolean => {
-  // In a production app, implement proper rate limiting
-  // For now, we'll always return true (no rate limiting)
-  return true
-}
+// Webhook secrets
+const testWebhookSecret = "whsec_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+const liveWebhookSecret = "whsec_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
 export async function POST(request: Request) {
+  const body = await request.text()
+  const signature = request.headers.get("stripe-signature") as string
+
+  let event: Stripe.Event
+
   try {
-    // Get the raw request body as text
-    const rawBody = await request.text()
+    // Determine if the webhook is from test mode or live mode
+    // In a real app, you might inspect the event or use separate webhook endpoints
+    const isTestMode = true
+    const stripe = getStripeInstance(isTestMode)
+    const webhookSecret = isTestMode ? testWebhookSecret : liveWebhookSecret
 
-    // Get the Stripe signature from headers
-    const signature = request.headers.get("stripe-signature")
-
-    if (!signature) {
-      console.error("Missing Stripe signature")
-      return NextResponse.json({ error: "Missing Stripe signature" }, { status: 400 })
-    }
-
-    // Check rate limiting
-    if (!processRateLimit(signature)) {
-      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 })
-    }
-
-    // Get Stripe webhook secret
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
-
-    if (!webhookSecret) {
-      console.error("Stripe webhook secret is missing")
-      return NextResponse.json({ error: "Webhook configuration error" }, { status: 500 })
-    }
-
-    // Get Stripe instance
-    let stripe
-    try {
-      stripe = getStripeInstance()
-    } catch (error) {
-      console.error("Error initializing Stripe:", error)
-      return NextResponse.json({ error: "Stripe configuration error" }, { status: 500 })
-    }
-
-    // Verify and construct the event
-    let event: Stripe.Event
-    try {
-      event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret)
-    } catch (error) {
-      console.error("Webhook signature verification failed:", error)
-      return NextResponse.json({ error: "Webhook signature verification failed" }, { status: 400 })
-    }
-
-    // Log the event
-    console.log(`Received Stripe webhook event: ${event.type} (${event.id})`)
-
-    // Generate idempotency key and prepare metadata
-    const idempotencyKey = generateIdempotencyKey(event)
-    const metadata = {
-      eventId: event.id,
-      eventType: event.type,
-      timestamp: event.created,
-      apiVersion: event.api_version || "unknown",
-      idempotencyKey,
-    }
-
-    // Forward the event to all destinations
-    const forwardingResults = await forwardWebhookEventToAll(event, metadata)
-
-    // Return success response
-    return NextResponse.json({
-      received: true,
-      eventId: event.id,
-      eventType: event.type,
-      forwardingResults: forwardingResults.map((result) => ({
-        destination: result.destination.name,
-        success: result.success,
-        message: result.message,
-      })),
-    })
-  } catch (error) {
-    logError("Webhook processing error", error)
-    return NextResponse.json(
-      { error: "Webhook processing error", details: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 },
-    )
+    // Verify the webhook signature
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+  } catch (err) {
+    const error = err as Error
+    console.error(`Webhook signature verification failed: ${error.message}`)
+    return NextResponse.json({ error: error.message }, { status: 400 })
   }
+
+  // Handle specific event types
+  try {
+    switch (event.type) {
+      case "customer.subscription.created":
+        await handleSubscriptionCreated(event.data.object as Stripe.Subscription)
+        break
+      case "customer.subscription.updated":
+        await handleSubscriptionUpdated(event.data.object as Stripe.Subscription)
+        break
+      case "customer.subscription.deleted":
+        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription)
+        break
+      case "invoice.payment_succeeded":
+        await handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice)
+        break
+      case "invoice.payment_failed":
+        await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice)
+        break
+      default:
+        console.log(`Unhandled event type: ${event.type}`)
+    }
+
+    return NextResponse.json({ received: true })
+  } catch (error) {
+    console.error("Error handling webhook event:", error)
+    return NextResponse.json({ error: "Failed to process webhook" }, { status: 500 })
+  }
+}
+
+// Webhook event handlers
+async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
+  // In a real app, you would update your database to record the new subscription
+  console.log(`Subscription created: ${subscription.id}`)
+}
+
+async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
+  // In a real app, you would update your database with the subscription changes
+  console.log(`Subscription updated: ${subscription.id}, status: ${subscription.status}`)
+}
+
+async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
+  // In a real app, you would update your database to mark the subscription as cancelled
+  console.log(`Subscription deleted: ${subscription.id}`)
+}
+
+async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
+  // In a real app, you would update your database to record the successful payment
+  console.log(`Invoice payment succeeded: ${invoice.id}`)
+}
+
+async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
+  // In a real app, you would update your database and possibly notify the user
+  console.log(`Invoice payment failed: ${invoice.id}`)
 }

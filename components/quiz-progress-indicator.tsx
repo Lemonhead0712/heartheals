@@ -7,14 +7,9 @@ import { Progress } from "@/components/ui/progress"
 type QuizProgressIndicatorProps = {
   quizType: "emotional-awareness" | "self-compassion"
   currentQuizQuestions?: string[]
-  quizCompleted?: boolean // Add this new prop
 }
 
-export function QuizProgressIndicator({
-  quizType,
-  currentQuizQuestions = [],
-  quizCompleted = false, // Add this new prop with default value
-}: QuizProgressIndicatorProps) {
+export function QuizProgressIndicator({ quizType, currentQuizQuestions = [] }: QuizProgressIndicatorProps) {
   const [progress, setProgress] = useState(0)
   const [totalQuestions, setTotalQuestions] = useState(0)
   const [answeredQuestions, setAnsweredQuestions] = useState<string[]>([])
@@ -124,22 +119,20 @@ export function QuizProgressIndicator({
         <div className="space-y-2">
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-purple-700">Overall Coverage</span>
-            <span className="text-sm text-purple-600">
-              {currentQuizQuestions.length > 0 && quizCompleted ? progress : 0}%
-            </span>
+            <span className="text-sm text-purple-600">{progress}%</span>
           </div>
-          <Progress value={currentQuizQuestions.length > 0 && quizCompleted ? progress : 0} className="h-2" />
+          <Progress value={progress} className="h-2" />
         </div>
 
-        {Object.keys(categoryCoverage).length > 0 && currentQuizQuestions.length > 0 && (
+        {Object.keys(categoryCoverage).length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {Object.entries(categoryCoverage).map(([category, value]) => (
               <div key={category} className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-purple-700">{formatCategory(category)}</span>
-                  <span className="text-sm text-purple-600">{quizCompleted ? value : 0}%</span>
+                  <span className="text-sm text-purple-600">{value}%</span>
                 </div>
-                <Progress value={quizCompleted ? value : 0} className="h-2" />
+                <Progress value={value} className="h-2" />
               </div>
             ))}
           </div>
@@ -147,10 +140,13 @@ export function QuizProgressIndicator({
 
         <div className="pt-2">
           <p className="text-sm text-purple-600">
-            <span className="font-medium">Questions in current quiz:</span> {currentQuizQuestions.length}
+            <span className="font-medium">Questions answered:</span> {answeredQuestions.length} of {totalQuestions}
           </p>
-          {currentQuizQuestions.length > 0 && !quizCompleted && (
-            <p className="text-xs text-purple-500 mt-1">Complete the quiz to see your progress.</p>
+          {currentQuizQuestions.length > 0 && (
+            <p className="text-xs text-purple-500 mt-1">
+              This quiz includes {currentQuizQuestions.filter((id) => !answeredQuestions.includes(id)).length} new
+              questions you haven't seen before.
+            </p>
           )}
         </div>
       </CardContent>

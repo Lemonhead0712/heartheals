@@ -3,23 +3,17 @@
 import Image from "next/image"
 import { motion } from "framer-motion"
 
-interface LogoProps {
-  className?: string
-  size?: "small" | "medium" | "large"
-  animate?: boolean
-  showText?: boolean
-  textOverride?: string
-  linkWrapped?: boolean // Add this prop to indicate if the logo is already wrapped in a Link
-}
-
 export function Logo({
   className = "",
   size = "medium",
   animate = false,
   showText = true,
-  textOverride,
-  linkWrapped = false, // Default to false
-}: LogoProps) {
+}: {
+  className?: string
+  size?: "small" | "medium" | "large"
+  animate?: boolean
+  showText?: boolean
+}) {
   const sizes = {
     small: { width: 32, height: 32 },
     medium: { width: 80, height: 80 },
@@ -66,7 +60,7 @@ export function Logo({
             size === "small" ? "text-sm" : size === "medium" ? "text-xl" : "text-2xl"
           }`}
         >
-          {textOverride || "HeartsHeal"}
+          HeartHeals
         </h2>
       )}
     </div>

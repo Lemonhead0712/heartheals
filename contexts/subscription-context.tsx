@@ -1,141 +1,160 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect, useCallback } from "react"
+import { createContext, useContext, useState, useEffect } from "react"
 
-// Define a simplified context type that maintains the same interface
-// but provides universal access to all features
+export type SubscriptionTier = "free" | "premium"
+
+export type FeatureUsage = {
+  [key: string]: number // Track usage count for each feature
+}
+
 export type SubscriptionContextType = {
-  // We'll keep these properties for backward compatibility
-  tier: "premium"
-  isActive: true
-  expiresAt: null
-  featureUsage: {}
-  remainingDays: null
-  // Feature access methods - now always return true
+  tier: SubscriptionTier
+  isActive: boolean
+  expiresAt: Date | null
+  featureUsage: FeatureUsage
+  remainingDays: number | null
+  // Feature access methods
   canUseFeature: (featureId: string) => boolean
   useFeature: (featureId: string) => boolean
-  trackFeatureUsage: (featureId: string) => void // New method that doesn't return anything
   resetFeatureUsage: (featureId: string) => void
-  // For compatibility with existing code
-  setTier: (tier: string) => void
+  // For testing/development
+  setTier: (tier: SubscriptionTier) => void
   setIsActive: (active: boolean) => void
   setExpiresAt: (date: Date | null) => void
   resetAllFeatureUsage: () => void
-  updateSubscriptionStatus: (newTier: string, newIsActive: boolean) => void
-  immediatelyActivatePremium: () => void
+  isTestMode: boolean
+  setIsTestMode: (isTest: boolean) => void
 }
 
-// Create a default context value that grants access to all features
-const defaultContextValue: SubscriptionContextType = {
-  tier: "premium",
-  isActive: true,
-  expiresAt: null,
-  featureUsage: {},
-  remainingDays: null,
-  canUseFeature: () => true,
-  useFeature: () => true,
-  trackFeatureUsage: () => {}, // New method
-  resetFeatureUsage: () => {},
-  setTier: () => {},
-  setIsActive: () => {},
-  setExpiresAt: () => {},
-  resetAllFeatureUsage: () => {},
-  updateSubscriptionStatus: () => {},
-  immediatelyActivatePremium: () => {},
-}
+const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined)
 
-const SubscriptionContext = createContext<SubscriptionContextType>(defaultContextValue)
+// Feature usage limits for free tier
+const FREE_TIER_LIMITS: { [key: string]: number } = {
+  "emotional-log": 3,
+  "breathing-exercise": 3,
+  "journal-entry": 3,
+  quiz: 1,
+  analytics: 0, // Not available in free tier
+  meditation: 1,
+  export: 0, // Not available in free tier
+}
 
 export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Track feature usage for analytics purposes only
-  const [featureUsage, setFeatureUsage] = useState<Record<string, number>>({})
+  const [tier, setTier] = useState<SubscriptionTier>("free")
+  const [isActive, setIsActive] = useState(false)
+  const [expiresAt, setExpiresAt] = useState<Date | null>(null)
+  const [featureUsage, setFeatureUsage] = useState<FeatureUsage>({})
+  const [isTestMode, setIsTestMode] = useState(false)
 
-  // Load feature usage data from localStorage on mount
+  // Load subscription data from localStorage on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
+        const savedTier = localStorage.getItem("heartsHeal_subscriptionTier")
+        const savedIsActive = localStorage.getItem("heartsHeal_subscriptionActive")
+        const savedExpiresAt = localStorage.getItem("heartsHeal_subscriptionExpires")
         const savedFeatureUsage = localStorage.getItem("heartsHeal_featureUsage")
-        if (savedFeatureUsage) {
-          setFeatureUsage(JSON.parse(savedFeatureUsage))
-        }
+        const savedIsTestMode = localStorage.getItem("heartsHeal_subscriptionTestMode")
+
+        if (savedTier) setTier(savedTier as SubscriptionTier)
+        if (savedIsActive) setIsActive(savedIsActive === "true")
+        if (savedExpiresAt) setExpiresAt(new Date(savedExpiresAt))
+        if (savedFeatureUsage) setFeatureUsage(JSON.parse(savedFeatureUsage))
+        if (savedIsTestMode) setIsTestMode(savedIsTestMode === "true")
       } catch (error) {
-        console.error("Error loading feature usage data:", error)
+        console.error("Error loading subscription data:", error)
       }
     }
   }, [])
 
-  // Save feature usage data to localStorage when it changes
+  // Save subscription data to localStorage when it changes
   useEffect(() => {
     if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem("heartsHeal_featureUsage", JSON.stringify(featureUsage))
-      } catch (error) {
-        console.error("Error saving feature usage data:", error)
-      }
+      localStorage.setItem("heartsHeal_subscriptionTier", tier)
+      localStorage.setItem("heartsHeal_subscriptionActive", String(isActive))
+      if (expiresAt) localStorage.setItem("heartsHeal_subscriptionExpires", expiresAt.toISOString())
+      localStorage.setItem("heartsHeal_featureUsage", JSON.stringify(featureUsage))
+      localStorage.setItem("heartsHeal_subscriptionTestMode", String(isTestMode))
     }
-  }, [featureUsage])
+  }, [tier, isActive, expiresAt, featureUsage, isTestMode])
 
-  // Feature access is always granted
-  const canUseFeature = useCallback(() => true, [])
+  // Calculate remaining days in subscription
+  const remainingDays = expiresAt
+    ? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null
 
-  // DEPRECATED: This method updates state during render and should not be used
-  // Keep it for backward compatibility but log a warning
-  const useFeature = useCallback((featureId: string) => {
-    console.warn(
-      "useFeature is deprecated and may cause React state updates during render. Use trackFeatureUsage instead.",
-    )
-    // Return true without updating state to avoid the error
-    return true
-  }, [])
+  // Check if a feature can be used based on subscription tier and usage
+  const canUseFeature = (featureId: string): boolean => {
+    // Premium tier has unlimited access to all features
+    if (tier === "premium" && isActive) {
+      return true
+    }
 
-  // New method: Track feature usage without returning a value
-  // This should be called in useEffect, not during render
-  const trackFeatureUsage = useCallback((featureId: string) => {
-    setFeatureUsage((prev) => ({
-      ...prev,
-      [featureId]: (prev[featureId] || 0) + 1,
-    }))
-  }, [])
+    // Free tier has limited access
+    const limit = FREE_TIER_LIMITS[featureId] || 0
+    const usage = featureUsage[featureId] || 0
+    return usage < limit
+  }
 
-  // Reset usage for a specific feature (for analytics)
-  const resetFeatureUsage = useCallback((featureId: string) => {
+  // Record usage of a feature
+  const useFeature = (featureId: string): boolean => {
+    // If premium and active, allow usage without counting
+    if (tier === "premium" && isActive) {
+      return true
+    }
+
+    // For free tier, check limits
+    const limit = FREE_TIER_LIMITS[featureId] || 0
+    const currentUsage = featureUsage[featureId] || 0
+
+    if (currentUsage < limit) {
+      setFeatureUsage((prev) => ({
+        ...prev,
+        [featureId]: (prev[featureId] || 0) + 1,
+      }))
+      return true
+    }
+
+    return false
+  }
+
+  // Reset usage for a specific feature
+  const resetFeatureUsage = (featureId: string) => {
     setFeatureUsage((prev) => ({
       ...prev,
       [featureId]: 0,
     }))
-  }, [])
+  }
 
-  // Reset all feature usage (for analytics)
-  const resetAllFeatureUsage = useCallback(() => {
+  // Reset all feature usage
+  const resetAllFeatureUsage = () => {
     setFeatureUsage({})
-  }, [])
+  }
 
-  // No-op functions for backward compatibility
-  const setTier = useCallback(() => {}, [])
-  const setIsActive = useCallback(() => {}, [])
-  const setExpiresAt = useCallback(() => {}, [])
-  const updateSubscriptionStatus = useCallback(() => {}, [])
-  const immediatelyActivatePremium = useCallback(() => {}, [])
+  // Update tier with persistence
+  const updateTier = (newTier: SubscriptionTier) => {
+    setTier(newTier)
+  }
 
   return (
     <SubscriptionContext.Provider
       value={{
-        tier: "premium",
-        isActive: true,
-        expiresAt: null,
+        tier,
+        isActive,
+        expiresAt,
         featureUsage,
-        remainingDays: null,
+        remainingDays,
         canUseFeature,
         useFeature,
-        trackFeatureUsage,
         resetFeatureUsage,
-        setTier,
+        setTier: updateTier,
         setIsActive,
         setExpiresAt,
         resetAllFeatureUsage,
-        updateSubscriptionStatus,
-        immediatelyActivatePremium,
+        isTestMode,
+        setIsTestMode,
       }}
     >
       {children}
@@ -145,9 +164,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
 export const useSubscription = (): SubscriptionContextType => {
   const context = useContext(SubscriptionContext)
-  if (!context) {
-    console.error("useSubscription must be used within a SubscriptionProvider")
-    return defaultContextValue
+  if (context === undefined) {
+    throw new Error("useSubscription must be used within a SubscriptionProvider")
   }
   return context
 }

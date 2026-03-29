@@ -1,6 +1,0 @@
-{
-  "framework": "nextjs",
-  "buildCommand": "NEXT_DISABLE_MINIFICATION=true next build",
-  "installCommand": "pnpm install",
-  "cleanUrls": true
-}

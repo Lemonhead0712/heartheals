@@ -41,7 +41,6 @@ import { useRealTimeUpdate } from "@/hooks/use-real-time-update"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { InteractiveEmotionPatterns } from "./interactive-emotion-patterns"
 import { ErrorBoundary } from "./error-boundary"
-import { EmotionRadarChart } from "./emotion-radar-chart"
 
 // Custom scatter dot component with animation
 const CustomScatterDot = (props: any) => {
@@ -773,12 +772,6 @@ export function EnhancedEmotionalAnalytics({
                     </div>
                   </div>
                 </div>
-                <EmotionRadarChart
-                  entries={emotionLogs}
-                  title="Emotion Balance"
-                  description="Distribution of your emotions by category"
-                  className="col-span-1 md:col-span-2"
-                />
               </TabsContent>
             </Tabs>
           </div>

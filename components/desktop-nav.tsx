@@ -1,27 +1,29 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BookHeart, Clipboard, Home, Wind, Activity, User } from "lucide-react"
+import { BookHeart, Clipboard, Home, Wind, Sparkles, Activity } from "lucide-react"
 import { Logo } from "./logo"
 import { cn } from "@/lib/utils"
+import { useSubscription } from "@/contexts/subscription-context"
 import { useHapticContext } from "@/contexts/haptic-context"
-import { useAuth } from "@/contexts/auth-context"
-import { Button } from "@/components/ui/button"
-import { useMobile } from "@/hooks/use-mobile"
-import { PageContainer } from "./page-container"
 
-interface DesktopNavProps {
-  scrolled?: boolean
-}
-
-export function DesktopNav({ scrolled = false }: DesktopNavProps) {
-  const { user, logout } = useAuth()
+export function DesktopNav() {
   const pathname = usePathname()
+  const { tier, isActive } = useSubscription()
+  const [scrolled, setScrolled] = useState(false)
   const { haptic, settings } = useHapticContext()
-  const isMobile = useMobile()
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
+
+  // Handle scroll effect for the header
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10)
+    }
+
+    window.addEventListener("scroll", handleScroll)
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
 
   const handleNavItemClick = () => {
     if (settings.enabled) {
@@ -55,74 +57,56 @@ export function DesktopNav({ scrolled = false }: DesktopNavProps) {
       href: "/app-status",
       icon: Activity,
     },
+    {
+      name: "Premium",
+      href: "/subscription",
+      icon: Sparkles,
+    },
   ]
 
-  // Only render on desktop
-  if (isMobile) return null
-
   return (
-    <PageContainer fullWidth withAuth={false} className="py-2" withGutter={false} maxWidth="3xl">
-      <div className="flex items-center justify-between px-4 lg:px-6">
-        <Link href="/" className="flex items-center space-x-2">
-          <Logo size="small" showText={true} linkWrapped={true} />
-        </Link>
+    <>
+      <header
+        className={cn(
+          "fixed top-0 left-0 right-0 z-50 transition-all duration-300 hidden md:block",
+          scrolled ? "bg-white/90 backdrop-blur-md shadow-sm" : "bg-transparent",
+        )}
+      >
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+          <Link href="/" className="flex items-center space-x-2">
+            <Logo size="small" showText={true} />
+          </Link>
 
-        <div className="flex items-center space-x-4">
-          {/* Navigation items */}
-          <nav className="flex items-center space-x-1">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href
+          {/* Desktop Navigation - Hidden on mobile */}
+          <div className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 hidden md:block">
+            <nav className="hidden md:flex items-center space-x-1">
+              {navItems.map((item) => {
+                const isActive = pathname === item.href
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={handleNavItemClick}
-                  className={cn(
-                    "flex items-center space-x-1 px-2 py-1.5 rounded-md text-sm font-medium transition-colors",
-                    isActive
-                      ? "text-purple-700 bg-purple-50"
-                      : "text-gray-600 hover:text-purple-600 hover:bg-purple-50/50",
-                  )}
-                >
-                  <item.icon className="w-4 h-4" />
-                  <span>{item.name}</span>
-                </Link>
-              )
-            })}
-          </nav>
-
-          {/* Auth button */}
-          {user ? (
-            <div className="flex items-center space-x-3">
-              <Link
-                href="/profile"
-                className="flex items-center space-x-2 text-sm text-purple-700 hover:text-purple-800 transition-colors"
-              >
-                <User className="w-4 h-4" />
-                <span>{user.name || user.email}</span>
-              </Link>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-purple-200 text-purple-700 hover:bg-purple-50"
-                onClick={logout}
-              >
-                Sign Out
-              </Button>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-purple-200 text-purple-700 hover:bg-purple-50"
-              asChild
-            >
-              <Link href="/login">Sign In</Link>
-            </Button>
-          )}
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={handleNavItemClick}
+                    className={cn(
+                      "flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                      isActive
+                        ? "text-purple-700 bg-purple-50"
+                        : "text-gray-600 hover:text-purple-600 hover:bg-purple-50/50",
+                    )}
+                  >
+                    <item.icon className="w-4 h-4" />
+                    <span>{item.name}</span>
+                  </Link>
+                )
+              })}
+            </nav>
+          </div>
         </div>
-      </div>
-    </PageContainer>
+      </header>
+
+      {/* Spacer to prevent content from being hidden under the fixed header */}
+      <div className="h-16" />
+    </>
   )
 }
