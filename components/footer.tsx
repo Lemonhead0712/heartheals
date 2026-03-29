@@ -11,7 +11,6 @@ const footerLinks = {
   Support: [
     { label: "About",    href: "/about" },
     { label: "FAQ",      href: "/faq" },
-    { label: "Premium",  href: "/subscription" },
   ],
 }
 

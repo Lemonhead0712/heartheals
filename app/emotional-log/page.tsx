@@ -14,8 +14,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Logo } from "@/components/logo"
 import { BottomNav } from "@/components/bottom-nav"
 import { EmojiPicker } from "@/components/emoji-picker"
-import { FeatureGate } from "@/components/feature-gate"
-import { SubscriptionStatus } from "@/components/subscription-status"
+
 import { useEmotionLogs } from "@/hooks/use-emotion-logs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
@@ -163,12 +162,9 @@ function EmotionalLog() {
             <h1 className="text-3xl font-bold text-pink-800 mt-4 mb-2">Emotional State Log</h1>
             <p className="text-pink-600">Track your emotions and reflect on your emotional patterns</p>
           </div>
-          <div className="flex flex-col items-end">
-            <SubscriptionStatus />
-            <div className="flex items-center mt-2">
-              <Clock className="h-4 w-4 text-pink-500 mr-1" />
-              <span className="text-xs text-pink-500">{new Date().toLocaleDateString()}</span>
-            </div>
+          <div className="flex items-center">
+            <Clock className="h-4 w-4 text-pink-500 mr-1" />
+            <span className="text-xs text-pink-500">{new Date().toLocaleDateString()}</span>
           </div>
         </motion.div>
 
@@ -182,7 +178,6 @@ function EmotionalLog() {
           </motion.div>
         )}
 
-        <FeatureGate featureId="emotional-log">
           <motion.div variants={item}>
             <Card className="mb-8 border-pink-200 bg-white/90 backdrop-blur-sm shadow-md">
               <CardHeader className="flex flex-row items-center justify-between">
@@ -347,7 +342,7 @@ function EmotionalLog() {
               </AnimatePresence>
             )}
           </motion.div>
-        </FeatureGate>
+
 
         {/* Enhanced Emotional Analytics Section */}
         <motion.div className="mt-10" variants={item}>

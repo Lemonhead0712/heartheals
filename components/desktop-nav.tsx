@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, BookHeart, Wind, BarChart3, Sparkles, Menu, X } from "lucide-react"
+import { Home, BookHeart, Wind, BarChart3, Menu, X } from "lucide-react"
 import { Logo } from "./logo"
 import { cn } from "@/lib/utils"
 import { useHapticContext } from "@/contexts/haptic-context"
@@ -81,20 +81,7 @@ export function DesktopNav() {
             })}
           </nav>
 
-          {/* Premium CTA */}
-          <Link
-            href="/subscription"
-            onClick={() => click("medium")}
-            className={cn(
-              "flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200",
-              pathname === "/subscription"
-                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                : "bg-primary/10 text-primary hover:bg-primary/18 hover:shadow-sm",
-            )}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            Premium
-          </Link>
+
         </div>
       </header>
 
@@ -167,15 +154,7 @@ export function DesktopNav() {
                     </Link>
                   )
                 })}
-                <div className="my-1 border-t border-border/50" />
-                <Link
-                  href="/subscription"
-                  onClick={() => click("medium")}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-primary bg-primary/10 hover:bg-primary/18 transition-colors"
-                >
-                  <Sparkles className="w-4 h-4 shrink-0" />
-                  Premium
-                </Link>
+
               </div>
             </motion.nav>
           </>

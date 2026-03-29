@@ -61,12 +61,11 @@ export default function FAQPage() {
 
           <AccordionItem value="item-5">
             <AccordionTrigger className="text-sm md:text-base">
-              Do I need a subscription to use HeartsHeal?
+              Is HeartsHeal free to use?
             </AccordionTrigger>
             <AccordionContent className="text-sm md:text-base">
-              HeartsHeal offers both free and premium features. The core tools for breathing, basic emotional logging,
-              and thought exercises are available to all users. Premium subscribers gain access to advanced analytics,
-              extended history, personalized insights, and additional specialized tools for deeper healing work.
+              Yes! HeartsHeal is completely free. All features -- breathing exercises, emotional logging, journaling,
+              quizzes, analytics, and data export -- are available to every user with no subscription required.
             </AccordionContent>
           </AccordionItem>
 
@@ -82,7 +81,7 @@ export default function FAQPage() {
           <AccordionItem value="item-7">
             <AccordionTrigger className="text-sm md:text-base">How do I export my data?</AccordionTrigger>
             <AccordionContent className="text-sm md:text-base">
-              Premium users can export their emotional logs, journal entries, and progress reports from the settings
+              You can export your emotional logs, journal entries, and progress reports from the settings
               section. This feature allows you to save your healing journey or share insights with trusted support
               people or healthcare providers if you choose.
             </AccordionContent>

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { BookHeart, Wind, BarChart3, ArrowRight, Sparkles, HeartHandshake } from "lucide-react"
+import { BookHeart, Wind, BarChart3, ArrowRight, HeartHandshake } from "lucide-react"
 import { WelcomeBanner } from "@/components/welcome-banner"
 import { SnapshotsSection } from "@/components/snapshots-section"
 import { QuickEmotionalLog } from "@/components/quick-emotional-log"
@@ -151,34 +151,7 @@ export default function Home() {
           <EmotionTrendsWidget />
         </motion.section>
 
-        {/* ── Premium upsell banner ── */}
-        <motion.section variants={item}>
-          <Link href="/subscription" className="group block">
-            <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-primary/5 p-6 sm:p-8 transition-all duration-300 hover:bg-primary/8 hover:border-primary/30 hover:shadow-md">
-              {/* Background glow */}
-              <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-primary/10 blur-2xl pointer-events-none" aria-hidden="true" />
 
-              <div className="relative flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="flex-1">
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/15 text-primary text-[11px] font-semibold tracking-wide mb-3">
-                    <Sparkles className="w-3 h-3" />
-                    HeartsHeal Premium
-                  </div>
-                  <h3 className="font-serif text-lg sm:text-xl font-semibold text-foreground mb-1.5">
-                    Unlock your full healing potential
-                  </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed max-w-md">
-                    Gain access to advanced journaling, unlimited emotional logs, progress insights, and exclusive guided exercises.
-                  </p>
-                </div>
-                <div className="shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold shadow-sm shadow-primary/20 transition-all duration-200 group-hover:shadow-md group-hover:shadow-primary/25 group-hover:-translate-y-0.5">
-                  Explore Premium
-                  <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-                </div>
-              </div>
-            </div>
-          </Link>
-        </motion.section>
       </motion.div>
     </div>
   )

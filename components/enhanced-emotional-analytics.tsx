@@ -85,14 +85,12 @@ interface EmotionalAnalyticsProps {
   emotionLogs?: EmotionEntry[]
   isLoading?: boolean
   error?: string | null
-  isPremium?: boolean
 }
 
 export function EnhancedEmotionalAnalytics({
   emotionLogs = [],
   isLoading = false,
   error = null,
-  isPremium = true,
 }: EmotionalAnalyticsProps) {
   const { toast } = useToast()
   const [timeRange, setTimeRange] = useState<"week" | "month" | "all">("week")
@@ -328,15 +326,6 @@ export function EnhancedEmotionalAnalytics({
         ) : error ? (
           <div className="flex flex-col items-center justify-center h-[300px] text-center">
             <p className="text-red-700">{error}</p>
-          </div>
-        ) : !isPremium ? (
-          <div className="flex flex-col items-center justify-center h-[300px] text-center bg-gray-50 rounded-lg p-6">
-            <PieChartIcon className="h-12 w-12 text-pink-300 mb-4" />
-            <h3 className="text-xl font-semibold text-pink-700 mb-2">Premium Analytics</h3>
-            <p className="text-pink-600 mb-4">
-              Upgrade to premium to unlock detailed emotional analytics and insights.
-            </p>
-            <Button className="bg-pink-600 hover:bg-pink-700">Upgrade Now</Button>
           </div>
         ) : emotionLogs.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-[300px] text-center">

@@ -3,17 +3,16 @@
 import type React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, BookHeart, Wind, BarChart3, Sparkles } from "lucide-react"
+import { Home, BookHeart, Wind, BarChart3 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useHapticContext } from "@/contexts/haptic-context"
 import { motion } from "framer-motion"
 
 const navItems = [
-  { name: "Home",     href: "/",             icon: Home },
-  { name: "Thoughts", href: "/thoughts",     icon: BookHeart },
-  { name: "Breathe",  href: "/breathe",      icon: Wind },
+  { name: "Home",     href: "/",              icon: Home },
+  { name: "Thoughts", href: "/thoughts",      icon: BookHeart },
+  { name: "Breathe",  href: "/breathe",       icon: Wind },
   { name: "Log",      href: "/emotional-log", icon: BarChart3 },
-  { name: "Premium",  href: "/subscription", icon: Sparkles },
 ]
 
 export function BottomNav() {
@@ -37,11 +36,9 @@ export function BottomNav() {
         className="glass-nav"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="grid grid-cols-5 max-w-lg mx-auto h-[60px]">
+        <div className="grid grid-cols-4 max-w-lg mx-auto h-[60px]">
           {navItems.map(({ name, href, icon: Icon }) => {
             const active = pathname === href
-            const isPremium = href === "/subscription"
-
             return (
               <Link
                 key={name}
@@ -53,9 +50,7 @@ export function BottomNav() {
                   "relative flex flex-col items-center justify-center gap-0.5 touch-manipulation select-none",
                   "transition-colors duration-200",
                   active
-                    ? isPremium
-                      ? "text-primary"
-                      : "text-primary"
+                    ? "text-primary"
                     : "text-muted-foreground/70 hover:text-muted-foreground",
                 )}
               >
@@ -74,17 +69,11 @@ export function BottomNav() {
                     className={cn(
                       "transition-all duration-200",
                       active
-                        ? isPremium
-                          ? "w-5 h-5 stroke-[1.75]"
-                          : "w-5 h-5 stroke-[2]"
+                        ? "w-5 h-5 stroke-[2]"
                         : "w-[18px] h-[18px] stroke-[1.5]",
                     )}
                     aria-hidden="true"
                   />
-                  {/* Premium sparkle dot */}
-                  {isPremium && !active && (
-                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-primary/70" />
-                  )}
                 </div>
 
                 {/* Label */}
