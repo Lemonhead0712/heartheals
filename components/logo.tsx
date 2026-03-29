@@ -4,6 +4,12 @@ import Image from "next/image"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 
+const sizes = {
+  small:  { img: 26, text: "text-[15px]" },
+  medium: { img: 64, text: "text-lg" },
+  large:  { img: 88, text: "text-2xl" },
+} as const
+
 export function Logo({
   className = "",
   size = "medium",
@@ -11,42 +17,18 @@ export function Logo({
   showText = true,
 }: {
   className?: string
-  size?: "small" | "medium" | "large"
+  size?: keyof typeof sizes
   animate?: boolean
   showText?: boolean
 }) {
-  const sizes = {
-    small: { width: 28, height: 28 },
-    medium: { width: 72, height: 72 },
-    large: { width: 100, height: 100 },
-  }
+  const { img, text } = sizes[size]
 
-  const logoComponent = animate ? (
-    <motion.div
-      initial={{ scale: 0.95 }}
-      animate={{ scale: [0.95, 1.02, 0.95] }}
-      transition={{
-        duration: 4,
-        repeat: Number.POSITIVE_INFINITY,
-        repeatType: "reverse",
-        ease: "easeInOut",
-      }}
-    >
-      <Image
-        src="/images/heart-heals-logo.png"
-        alt="HeartsHeal Logo"
-        width={sizes[size].width}
-        height={sizes[size].height}
-        className="drop-shadow-sm"
-        priority
-      />
-    </motion.div>
-  ) : (
+  const imgEl = (
     <Image
       src="/images/heart-heals-logo.png"
-      alt="HeartsHeal Logo"
-      width={sizes[size].width}
-      height={sizes[size].height}
+      alt="HeartsHeal"
+      width={img}
+      height={img}
       className="drop-shadow-sm"
       priority
     />
@@ -54,16 +36,18 @@ export function Logo({
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      {logoComponent}
-      {showText && (
-        <span
-          className={cn(
-            "font-serif font-semibold tracking-tight text-foreground",
-            size === "small" && "text-base",
-            size === "medium" && "text-xl",
-            size === "large" && "text-2xl",
-          )}
+      {animate ? (
+        <motion.div
+          animate={{ scale: [1, 1.04, 1] }}
+          transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
         >
+          {imgEl}
+        </motion.div>
+      ) : (
+        imgEl
+      )}
+      {showText && (
+        <span className={cn("font-serif font-semibold tracking-tight text-foreground leading-none", text)}>
           HeartsHeal
         </span>
       )}

@@ -23,15 +23,28 @@ const playfair = Playfair_Display({
 })
 
 export const metadata: Metadata = {
-  title: "HeartsHeal",
-  description: "A safe space for emotional healing, reflection, and growth",
+  title: {
+    default: "HeartsHeal — Your Space for Healing",
+    template: "%s | HeartsHeal",
+  },
+  description:
+    "A safe, calming space for emotional healing, guided breathing, reflective journaling, and personal growth.",
+  keywords: ["mental health", "emotional wellness", "journaling", "meditation", "grief", "healing"],
+  openGraph: {
+    title: "HeartsHeal — Your Space for Healing",
+    description: "A safe, calming space for emotional healing and personal growth.",
+    type: "website",
+  },
 }
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#f5f0ed",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#faf7f5" },
+    { media: "(prefers-color-scheme: dark)",  color: "#0f1117" },
+  ],
 }
 
 export default function RootLayout({
@@ -47,7 +60,7 @@ export default function RootLayout({
             <HapticProvider>
               <div className="flex flex-1 flex-col">
                 <DesktopNav />
-                <main className="flex-1 pb-20 md:pb-0">{children}</main>
+                <main className="flex-1 pb-[76px] md:pb-0">{children}</main>
                 <Footer />
               </div>
               <BottomNav />

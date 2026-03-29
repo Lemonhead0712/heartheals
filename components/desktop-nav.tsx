@@ -3,73 +3,78 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BookHeart, Clipboard, Home, Wind, Sparkles } from "lucide-react"
+import { Home, BookHeart, Wind, BarChart3, Sparkles, Menu, X } from "lucide-react"
 import { Logo } from "./logo"
 import { cn } from "@/lib/utils"
 import { useHapticContext } from "@/contexts/haptic-context"
+import { motion, AnimatePresence } from "framer-motion"
+
+const navItems = [
+  { name: "Home",          href: "/",             icon: Home },
+  { name: "Emotional Log", href: "/emotional-log", icon: BarChart3 },
+  { name: "Breathe",       href: "/breathe",       icon: Wind },
+  { name: "Thoughts",      href: "/thoughts",      icon: BookHeart },
+]
 
 export function DesktopNav() {
   const pathname = usePathname()
-  const [scrolled, setScrolled] = useState(false)
-  const { haptic, settings } = useHapticContext()
+  const [scrolled, setScrolled]         = useState(false)
+  const [mobileOpen, setMobileOpen]     = useState(false)
+  const { haptic, settings }            = useHapticContext()
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 10)
-    }
-    window.addEventListener("scroll", handleScroll, { passive: true })
-    return () => window.removeEventListener("scroll", handleScroll)
+    const onScroll = () => setScrolled(window.scrollY > 8)
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => window.removeEventListener("scroll", onScroll)
   }, [])
 
-  const handleNavItemClick = () => {
-    if (settings.enabled) {
-      haptic("light")
-    }
-  }
+  // Close mobile menu on route change
+  useEffect(() => { setMobileOpen(false) }, [pathname])
 
-  const navItems = [
-    { name: "Home", href: "/", icon: Home },
-    { name: "Emotional Log", href: "/emotional-log", icon: Clipboard },
-    { name: "Breathe", href: "/breathe", icon: Wind },
-    { name: "Thoughts", href: "/thoughts", icon: BookHeart },
-  ]
+  const click = (intensity: "light" | "medium" = "light") => {
+    if (settings.enabled) haptic(intensity)
+  }
 
   return (
     <>
+      {/* ── Fixed top bar (desktop only) ── */}
       <header
         className={cn(
-          "fixed top-0 left-0 right-0 z-50 hidden md:block transition-all duration-300",
-          scrolled
-            ? "bg-card/85 backdrop-blur-xl shadow-sm border-b border-border/50"
-            : "bg-transparent",
+          "hidden md:flex fixed top-0 left-0 right-0 z-50 transition-all duration-300",
+          scrolled ? "glass-nav border-b" : "bg-transparent border-transparent",
         )}
       >
-        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto w-full px-6 h-[60px] flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center" onClick={handleNavItemClick}>
-            <Logo size="small" showText={true} />
+          <Link href="/" onClick={() => click()} aria-label="HeartsHeal home">
+            <Logo size="small" showText />
           </Link>
 
-          {/* Center nav links */}
-          <nav className="flex items-center gap-1">
-            {navItems.map((item) => {
-              const isCurrentPage = pathname === item.href
+          {/* Nav links */}
+          <nav className="flex items-center gap-0.5" aria-label="Primary navigation">
+            {navItems.map(({ name, href, icon: Icon }) => {
+              const active = pathname === href
               return (
                 <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={handleNavItemClick}
+                  key={href}
+                  href={href}
+                  onClick={() => click()}
                   className={cn(
-                    "relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                    isCurrentPage
+                    "relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors duration-200",
+                    active
                       ? "text-primary"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent/60",
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent/70",
                   )}
+                  aria-current={active ? "page" : undefined}
                 >
-                  <item.icon className="w-4 h-4" />
-                  <span>{item.name}</span>
-                  {isCurrentPage && (
-                    <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-primary" />
+                  <Icon className="w-[15px] h-[15px] shrink-0" />
+                  <span>{name}</span>
+                  {active && (
+                    <motion.span
+                      layoutId="desktop-nav-indicator"
+                      className="absolute inset-0 rounded-xl bg-primary/8"
+                      transition={{ type: "spring", bounce: 0.25, duration: 0.4 }}
+                    />
                   )}
                 </Link>
               )
@@ -79,22 +84,103 @@ export function DesktopNav() {
           {/* Premium CTA */}
           <Link
             href="/subscription"
-            onClick={handleNavItemClick}
+            onClick={() => click("medium")}
             className={cn(
-              "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all",
+              "flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200",
               pathname === "/subscription"
-                ? "bg-primary text-primary-foreground"
-                : "bg-primary/10 text-primary hover:bg-primary/20",
+                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                : "bg-primary/10 text-primary hover:bg-primary/18 hover:shadow-sm",
             )}
           >
-            <Sparkles className="w-4 h-4" />
-            <span>Premium</span>
+            <Sparkles className="w-3.5 h-3.5" />
+            Premium
           </Link>
         </div>
       </header>
 
-      {/* Spacer for fixed header -- only on desktop */}
-      <div className="hidden md:block h-16" />
+      {/* Spacer for fixed header on desktop */}
+      <div className="hidden md:block h-[60px]" aria-hidden="true" />
+
+      {/* ── Mobile top bar ── */}
+      <div className="fixed top-0 left-0 right-0 z-50 md:hidden glass-nav border-b">
+        <div className="flex items-center justify-between px-4 h-14">
+          <Link href="/" onClick={() => { click(); setMobileOpen(false) }} aria-label="HeartsHeal home">
+            <Logo size="small" showText />
+          </Link>
+          <button
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileOpen}
+            onClick={() => { setMobileOpen((o) => !o); click() }}
+            className="w-9 h-9 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent/70 transition-colors"
+          >
+            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile top spacer */}
+      <div className="h-14 md:hidden" aria-hidden="true" />
+
+      {/* ── Mobile menu overlay ── */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm md:hidden"
+              onClick={() => setMobileOpen(false)}
+              aria-hidden="true"
+            />
+            {/* Drawer */}
+            <motion.nav
+              key="drawer"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="fixed top-14 left-0 right-0 z-50 md:hidden bg-card/96 backdrop-blur-xl border-b border-border/40 shadow-lg"
+              aria-label="Mobile navigation"
+            >
+              <div className="flex flex-col gap-0.5 p-3">
+                {navItems.map(({ name, href, icon: Icon }) => {
+                  const active = pathname === href
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={() => click()}
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors",
+                        active
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:text-foreground hover:bg-accent/70",
+                      )}
+                      aria-current={active ? "page" : undefined}
+                    >
+                      <Icon className="w-4 h-4 shrink-0" />
+                      {name}
+                    </Link>
+                  )
+                })}
+                <div className="my-1 border-t border-border/50" />
+                <Link
+                  href="/subscription"
+                  onClick={() => click("medium")}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-primary bg-primary/10 hover:bg-primary/18 transition-colors"
+                >
+                  <Sparkles className="w-4 h-4 shrink-0" />
+                  Premium
+                </Link>
+              </div>
+            </motion.nav>
+          </>
+        )}
+      </AnimatePresence>
     </>
   )
 }

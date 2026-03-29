@@ -6,77 +6,101 @@ import { usePathname } from "next/navigation"
 import { Home, BookHeart, Wind, BarChart3, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useHapticContext } from "@/contexts/haptic-context"
-import { Logo } from "./logo"
+import { motion } from "framer-motion"
+
+const navItems = [
+  { name: "Home",     href: "/",             icon: Home },
+  { name: "Thoughts", href: "/thoughts",     icon: BookHeart },
+  { name: "Breathe",  href: "/breathe",      icon: Wind },
+  { name: "Log",      href: "/emotional-log", icon: BarChart3 },
+  { name: "Premium",  href: "/subscription", icon: Sparkles },
+]
 
 export function BottomNav() {
   const pathname = usePathname()
   const { haptic, settings } = useHapticContext()
 
-  const handleNavClick = (href: string, e: React.MouseEvent) => {
-    if (settings.enabled) {
-      haptic("medium")
-    }
-    if (pathname === href) {
-      e.preventDefault()
-    }
+  const handleClick = (href: string, e: React.MouseEvent) => {
+    if (settings.enabled) haptic("light")
+    if (pathname === href) e.preventDefault()
   }
 
-  const navItems = [
-    { name: "Home", href: "/", icon: Home },
-    { name: "Thoughts", href: "/thoughts", icon: BookHeart },
-    { name: "Breathe", href: "/breathe", icon: Wind },
-    { name: "Log", href: "/emotional-log", icon: BarChart3 },
-    { name: "Premium", href: "/subscription", icon: Sparkles },
-  ]
-
   return (
-    <>
-      {/* Mobile top bar */}
-      <div className="fixed top-0 left-0 z-50 w-full bg-card/90 backdrop-blur-xl border-b border-border/50 md:hidden">
-        <div className="flex justify-center py-2.5 px-4">
-          <Link href="/" onClick={(e) => handleNavClick("/", e)}>
-            <Logo size="small" showText={true} />
-          </Link>
-        </div>
-      </div>
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 md:hidden"
+      aria-label="Mobile bottom navigation"
+    >
+      {/* Subtle top separator glow */}
+      <div className="h-px w-full bg-gradient-to-r from-transparent via-border/60 to-transparent" />
 
-      {/* Mobile top spacer */}
-      <div className="h-14 md:hidden" />
+      <div
+        className="glass-nav"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        <div className="grid grid-cols-5 max-w-lg mx-auto h-[60px]">
+          {navItems.map(({ name, href, icon: Icon }) => {
+            const active = pathname === href
+            const isPremium = href === "/subscription"
 
-      {/* Bottom navigation */}
-      <div className="fixed bottom-0 left-0 z-50 w-full md:hidden">
-        <div className="bg-card/90 backdrop-blur-xl border-t border-border/50">
-          <div className="grid h-16 grid-cols-5 max-w-lg mx-auto" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-            {navItems.map((item) => {
-              const isActive = pathname === item.href
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  onClick={(e) => handleNavClick(item.href, e)}
+            return (
+              <Link
+                key={name}
+                href={href}
+                onClick={(e) => handleClick(href, e)}
+                aria-label={name}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "relative flex flex-col items-center justify-center gap-0.5 touch-manipulation select-none",
+                  "transition-colors duration-200",
+                  active
+                    ? isPremium
+                      ? "text-primary"
+                      : "text-primary"
+                    : "text-muted-foreground/70 hover:text-muted-foreground",
+                )}
+              >
+                {/* Active background pill */}
+                {active && (
+                  <motion.span
+                    layoutId="bottom-nav-pill"
+                    className="absolute inset-x-3 top-1.5 bottom-1 rounded-2xl bg-primary/10"
+                    transition={{ type: "spring", bounce: 0.3, duration: 0.4 }}
+                  />
+                )}
+
+                {/* Icon */}
+                <div className="relative z-10 flex items-center justify-center w-6 h-6">
+                  <Icon
+                    className={cn(
+                      "transition-all duration-200",
+                      active
+                        ? isPremium
+                          ? "w-5 h-5 stroke-[1.75]"
+                          : "w-5 h-5 stroke-[2]"
+                        : "w-[18px] h-[18px] stroke-[1.5]",
+                    )}
+                    aria-hidden="true"
+                  />
+                  {/* Premium sparkle dot */}
+                  {isPremium && !active && (
+                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-primary/70" />
+                  )}
+                </div>
+
+                {/* Label */}
+                <span
                   className={cn(
-                    "flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors touch-manipulation",
-                    isActive ? "text-primary" : "text-muted-foreground",
+                    "relative z-10 text-[10px] font-medium leading-none tracking-wide",
+                    active ? "text-primary" : "",
                   )}
                 >
-                  <div className="relative flex items-center justify-center">
-                    <item.icon
-                      className={cn(
-                        "h-5 w-5 transition-all duration-200",
-                        isActive && "scale-110",
-                      )}
-                    />
-                    {isActive && (
-                      <span className="absolute -bottom-1 w-1 h-1 rounded-full bg-primary" />
-                    )}
-                  </div>
-                  <span className="mt-1">{item.name}</span>
-                </Link>
-              )
-            })}
-          </div>
+                  {name}
+                </span>
+              </Link>
+            )
+          })}
         </div>
       </div>
-    </>
+    </nav>
   )
 }

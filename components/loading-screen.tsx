@@ -10,52 +10,74 @@ const affirmations = [
   "You are stronger than you feel right now.",
   "Grief is love looking for a home.",
   "Even in sadness, hope patiently waits.",
+  "You deserve gentleness, especially from yourself.",
 ]
 
 export function LoadingScreen() {
-  const [currentAffirmation, setCurrentAffirmation] = useState(0)
+  const [affirmation, setAffirmation] = useState(0)
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentAffirmation((prev) => (prev + 1) % affirmations.length)
-    }, 3000)
-    return () => clearInterval(interval)
+    const t = setInterval(() => {
+      setAffirmation((prev) => (prev + 1) % affirmations.length)
+    }, 3200)
+    return () => clearInterval(t)
   }, [])
 
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-page-gradient z-50">
-      <Logo size="large" />
+      {/* Soft ambient circles */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-primary/6 blur-3xl animate-pulse-slow" />
+        <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full bg-primary/4 blur-2xl animate-pulse-slow [animation-delay:1.4s]" />
+      </div>
 
-      <div className="h-16 mt-8 overflow-hidden">
+      {/* Logo */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="relative z-10 mb-8"
+      >
+        <Logo size="large" animate />
+      </motion.div>
+
+      {/* Rotating affirmation */}
+      <div className="relative z-10 h-14 flex items-center justify-center">
         <AnimatePresence mode="wait">
           <motion.p
-            key={currentAffirmation}
-            initial={{ opacity: 0, y: 16 }}
+            key={affirmation}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }}
-            transition={{ duration: 0.4 }}
-            className="text-center text-lg font-serif italic text-muted-foreground max-w-md px-4"
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="text-center text-base font-serif italic text-muted-foreground max-w-xs px-6"
           >
-            {affirmations[currentAffirmation]}
+            {affirmations[affirmation]}
           </motion.p>
         </AnimatePresence>
       </div>
 
-      <div className="mt-8 flex gap-2">
+      {/* Progress dots */}
+      <motion.div
+        className="relative z-10 flex gap-2 mt-6"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4 }}
+      >
         {[0, 1, 2].map((i) => (
           <motion.div
             key={i}
-            animate={{ scale: [1, 1.3, 1] }}
+            animate={{ scale: [1, 1.35, 1], opacity: [0.35, 0.85, 0.35] }}
             transition={{
-              duration: 1.2,
+              duration: 1.4,
               repeat: Number.POSITIVE_INFINITY,
-              repeatDelay: 0.3,
-              delay: i * 0.3,
+              delay: i * 0.22,
+              ease: "easeInOut",
             }}
-            className="w-2.5 h-2.5 rounded-full bg-primary/40"
+            className="w-2 h-2 rounded-full bg-primary/60"
           />
         ))}
-      </div>
+      </motion.div>
     </div>
   )
 }
